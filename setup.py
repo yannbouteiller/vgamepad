@@ -38,5 +38,4 @@ setup(
         'win/vigem/install/x64/ViGEmBusSetup_x64.msi',
         'win/vigem/install/x86/ViGEmBusSetup_x86.msi',
     ]}
-
 )
