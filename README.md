@@ -35,7 +35,7 @@ This will install ```vgamepad``` in your active python environment.
 
 ## Getting started
 
-```vgamepad``` provides two main python classes: ```VX360Gamepad```, which emulates a XBox360 gamepad, and ```DS4Gamepad```, which emulates a DualShock4 gamepad.
+```vgamepad``` provides two main python classes: ```VX360Gamepad```, which emulates a XBox360 gamepad, and ```VDS4Gamepad```, which emulates a DualShock4 gamepad.
 
 The state of a virtual gamepad (e.g. pressed buttons, joystick values...) is called a report.
 To modify the report, a number of user-friendly API functions are provided by ```vgamepad```.
