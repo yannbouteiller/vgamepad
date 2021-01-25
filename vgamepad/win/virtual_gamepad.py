@@ -46,32 +46,44 @@ class VGamepad(ABC):
 
     def get_vid(self):
         """
-        @returns: the vendor ID of the virtual device
+        :return: the vendor ID of the virtual device
         """
         return vcli.vigem_target_get_vid(self._devicep)
 
     def get_pid(self):
         """
-        @returns: the product ID of the virtual device
+        :return: the product ID of the virtual device
         """
         return vcli.vigem_target_get_pid(self._devicep)
 
     def set_vid(self, vid):
         """
-        @param: the new vendor ID of the virtual device
+        :param: the new vendor ID of the virtual device
         """
         vcli.vigem_target_set_vid(self._devicep, vid)
 
     def set_pid(self, pid):
         """
-        @param: the new product ID of the virtual device
+        :param: the new product ID of the virtual device
         """
         vcli.vigem_target_get_pid(self._devicep, pid)
+    
+    def get_index(self):
+        """
+        :return: the internally used index of the target device
+        """
+        return vcli.vigem_target_get_index(self._devicep)
+
+    def get_type(self):
+        """
+        :return: the type of the object (e.g. VIGEM_TARGET_TYPE.Xbox360Wired)
+        """
+        return vcli.vigem_target_get_type(self._devicep)
 
     @abstractmethod
     def target_alloc(self):
         """
-        @returns: the pointer to an allocated ViGEm device (e.g. vcli.vigem_target_x360_alloc())
+        :return: the pointer to an allocated ViGEm device (e.g. vcli.vigem_target_x360_alloc())
         """
         pass
 
@@ -100,7 +112,7 @@ class VX360Gamepad(VGamepad):
         Presses a button (no effect if already pressed)
         All possible buttons are in XUSB_BUTTON
 
-        @param: a XUSB_BUTTON field, e.g. XUSB_BUTTON.XUSB_GAMEPAD_X
+        :param: a XUSB_BUTTON field, e.g. XUSB_BUTTON.XUSB_GAMEPAD_X
         """
         self.report.wButtons = self.report.wButtons | button
 
@@ -109,7 +121,7 @@ class VX360Gamepad(VGamepad):
         Releases a button (no effect if already released)
         All possible buttons are in XUSB_BUTTON
 
-        @param: a XUSB_BUTTON field, e.g. XUSB_BUTTON.XUSB_GAMEPAD_X
+        :param: a XUSB_BUTTON field, e.g. XUSB_BUTTON.XUSB_GAMEPAD_X
         """
         self.report.wButtons = self.report.wButtons & ~button
 
@@ -117,7 +129,7 @@ class VX360Gamepad(VGamepad):
         """
         Sets the value of the left trigger
 
-        @param: integer between 0 and 255 (0 = trigger released)
+        :param: integer between 0 and 255 (0 = trigger released)
         """
         self.report.bLeftTrigger = value
 
@@ -125,7 +137,7 @@ class VX360Gamepad(VGamepad):
         """
         Sets the value of the right trigger
 
-        @param: integer between 0 and 255 (0 = trigger released)
+        :param: integer between 0 and 255 (0 = trigger released)
         """
         self.report.bRightTrigger = value
 
@@ -133,7 +145,7 @@ class VX360Gamepad(VGamepad):
         """
         Sets the value of the left trigger
 
-        @param: float between 0.0 and 1.0 (0.0 = trigger released)
+        :param: float between 0.0 and 1.0 (0.0 = trigger released)
         """
         self.left_trigger(round(value_float * 255))
 
@@ -141,7 +153,7 @@ class VX360Gamepad(VGamepad):
         """
         Sets the value of the right trigger
 
-        @param: float between 0.0 and 1.0 (0.0 = trigger released)
+        :param: float between 0.0 and 1.0 (0.0 = trigger released)
         """
         self.right_trigger(round(value_float * 255))
 
@@ -149,7 +161,7 @@ class VX360Gamepad(VGamepad):
         """
         Sets the values of the X and Y axis for the left joystick
 
-        @param: integer between -32768 and 32767 (0 = neutral position)
+        :param: integer between -32768 and 32767 (0 = neutral position)
         """
         self.report.sThumbLX = x_value
         self.report.sThumbLY = y_value
@@ -158,7 +170,7 @@ class VX360Gamepad(VGamepad):
         """
         Sets the values of the X and Y axis for the right joystick
 
-        @param: integer between -32768 and 32767 (0 = neutral position)
+        :param: integer between -32768 and 32767 (0 = neutral position)
         """
         self.report.sThumbRX = x_value
         self.report.sThumbRY = y_value
@@ -167,7 +179,7 @@ class VX360Gamepad(VGamepad):
         """
         Sets the values of the X and Y axis for the left joystick
 
-        @param: float between -1.0 and 1.0 (0 = neutral position)
+        :param: float between -1.0 and 1.0 (0 = neutral position)
         """
         self.left_joystick(round(x_value_float * 32767), round(y_value_float * 32767))
 
@@ -175,7 +187,7 @@ class VX360Gamepad(VGamepad):
         """
         Sets the values of the X and Y axis for the right joystick
 
-        @param: float between -1.0 and 1.0 (0 = neutral position)
+        :param: float between -1.0 and 1.0 (0 = neutral position)
         """
         self.right_joystick(round(x_value_float * 32767), round(y_value_float * 32767))
 
@@ -217,7 +229,7 @@ class VDS4Gamepad(VGamepad):
         Presses a button (no effect if already pressed)
         All possible buttons are in DS4_BUTTONS
 
-        @param: a DS4_BUTTONS field, e.g. DS4_BUTTONS.DS4_BUTTON_TRIANGLE
+        :param: a DS4_BUTTONS field, e.g. DS4_BUTTONS.DS4_BUTTON_TRIANGLE
         """
         self.report.wButtons = self.report.wButtons | button
 
@@ -226,7 +238,7 @@ class VDS4Gamepad(VGamepad):
         Releases a button (no effect if already released)
         All possible buttons are in DS4_BUTTONS
 
-        @param: a DS4_BUTTONS field, e.g. DS4_BUTTONS.DS4_BUTTON_TRIANGLE
+        :param: a DS4_BUTTONS field, e.g. DS4_BUTTONS.DS4_BUTTON_TRIANGLE
         """
         self.report.wButtons = self.report.wButtons & ~button
 
@@ -235,7 +247,7 @@ class VDS4Gamepad(VGamepad):
         Presses a special button (no effect if already pressed)
         All possible buttons are in DS4_SPECIAL_BUTTONS
 
-        @param: a DS4_SPECIAL_BUTTONS field, e.g. DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
+        :param: a DS4_SPECIAL_BUTTONS field, e.g. DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
         """
         self.report.bSpecial = self.report.bSpecial | special_button
 
@@ -244,7 +256,7 @@ class VDS4Gamepad(VGamepad):
         Releases a special button (no effect if already released)
         All possible buttons are in DS4_SPECIAL_BUTTONS
 
-        @param: a DS4_SPECIAL_BUTTONS field, e.g. DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
+        :param: a DS4_SPECIAL_BUTTONS field, e.g. DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
         """
         self.report.bSpecial = self.report.bSpecial & ~special_button
 
@@ -252,7 +264,7 @@ class VDS4Gamepad(VGamepad):
         """
         Sets the value of the left trigger
 
-        @param: integer between 0 and 255 (0 = trigger released)
+        :param: integer between 0 and 255 (0 = trigger released)
         """
         self.report.bTriggerL = value
 
@@ -260,7 +272,7 @@ class VDS4Gamepad(VGamepad):
         """
         Sets the value of the right trigger
 
-        @param: integer between 0 and 255 (0 = trigger released)
+        :param: integer between 0 and 255 (0 = trigger released)
         """
         self.report.bTriggerR = value
 
@@ -268,7 +280,7 @@ class VDS4Gamepad(VGamepad):
         """
         Sets the value of the left trigger
 
-        @param: float between 0.0 and 1.0 (0.0 = trigger released)
+        :param: float between 0.0 and 1.0 (0.0 = trigger released)
         """
         self.left_trigger(round(value_float * 255))
 
@@ -276,7 +288,7 @@ class VDS4Gamepad(VGamepad):
         """
         Sets the value of the right trigger
 
-        @param: float between 0.0 and 1.0 (0.0 = trigger released)
+        :param: float between 0.0 and 1.0 (0.0 = trigger released)
         """
         self.right_trigger(round(value_float * 255))
 
@@ -285,7 +297,7 @@ class VDS4Gamepad(VGamepad):
         Sets the values of the X and Y axis for the left joystick
         Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
-        @param: integer between 0 and 255 (128 = neutral position)
+        :param: integer between 0 and 255 (128 = neutral position)
         """
         self.report.bThumbLX = x_value
         self.report.bThumbLY = - y_value
@@ -295,7 +307,7 @@ class VDS4Gamepad(VGamepad):
         Sets the values of the X and Y axis for the right joystick
         Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
-        @param: integer between 0 and 255 (128 = neutral position)
+        :param: integer between 0 and 255 (128 = neutral position)
         """
         self.report.bThumbRX = x_value
         self.report.bThumbRY = - y_value
@@ -305,7 +317,7 @@ class VDS4Gamepad(VGamepad):
         Sets the values of the X and Y axis for the left joystick
         Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
-        @param: float between -1.0 and 1.0 (0 = neutral position)
+        :param: float between -1.0 and 1.0 (0 = neutral position)
         """
         self.left_joystick(128 + round(x_value_float * 127), 128 + round(y_value_float * 127))
 
@@ -314,7 +326,7 @@ class VDS4Gamepad(VGamepad):
         Sets the values of the X and Y axis for the right joystick
         Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
-        @param: float between -1.0 and 1.0 (0 = neutral position)
+        :param: float between -1.0 and 1.0 (0 = neutral position)
         """
         self.right_joystick(128 + round(x_value_float * 127), 128 + round(y_value_float * 127))
 
@@ -323,7 +335,7 @@ class VDS4Gamepad(VGamepad):
         Sets the direction of the directional pad (hat)
         All possible directions are in DS4_DPAD_DIRECTIONS
 
-        @param: a DS4_DPAD_DIRECTIONS field, e.g. DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST
+        :param: a DS4_DPAD_DIRECTIONS field, e.g. DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST
         """
         vcom.DS4_SET_DPAD(self.report, direction)
 
@@ -338,7 +350,7 @@ class VDS4Gamepad(VGamepad):
         Enables using DS4_REPORT_EX instead of DS4_REPORT (advanced users only)
         If you don't know what this is about, you can safely ignore this function
 
-        @param: a DS4_REPORT_EX
+        :param: a DS4_REPORT_EX
         """
         check_err(vcli.vigem_target_ds4_update_ex(self._busp, self._devicep, extended_report))
 
