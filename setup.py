@@ -1,21 +1,24 @@
 from setuptools import setup, find_packages
-from os import path
 import platform
 
 assert platform.system() == 'Windows', "Sorry, this module is only compatible with Windows so far."
 
-with open(path.join(path.abspath(path.dirname(__file__)), 'README.md'), encoding='utf-8') as f:
-    long_description = f.read()
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setup(
     name='vgamepad',
+    packages=[package for package in find_packages()],
     version='0.0.1',
+    license='MIT',
     description='Virtual XBox360 and DualShock4 gamepads in python',
     long_description=long_description,
-    url='https://github.com/yannbouteiller/vgamepad',
+    long_description_content_type="text/markdown",
     author='Yann Bouteiller',
-    author_email='',
-    license='MIT',
+    url='https://github.com/yannbouteiller/vgamepad',
+    download_url='',
+    keywords=['virtual', 'gamepad', 'python', 'xbox', 'dualshock', 'controller', 'emulator'],
+    install_requires=[],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
@@ -29,8 +32,6 @@ setup(
         'Topic :: Games/Entertainment',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
     ],
-    keywords='virtual gamepad python xbox dualshock controller',
-    packages=find_packages(),
     package_data={'vgamepad': [
         'win/vigem/client/x64/ViGEmClient.dll',
         'win/vigem/client/x86/ViGEmClient.dll',
