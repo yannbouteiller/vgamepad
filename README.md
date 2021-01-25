@@ -20,7 +20,7 @@ Thus far, ```vgamepad``` is compatible with Windows only.
 
 ## Installation
 Before installing ```vgamepad```, you must install ViGEmBus on your system.
-Depending on your Windows version, download and execute the [ViGEmBus 64bit](https://github.com/ViGEm/ViGEmBus/releases/download/setup-v1.17.333/ViGEmBusSetup_x64.msi).
+Depending on your Windows version, download and execute the [ViGEmBus 64bit](https://github.com/ViGEm/ViGEmBus/releases/download/setup-v1.17.333/ViGEmBusSetup_x64.msi)
 or the [ViGEmBus 32bit](https://github.com/ViGEm/ViGEmBus/releases/download/setup-v1.17.333/ViGEmBusSetup_x64.msi) installer.
 
 Now that ViGEmBus is installed, open your favorite terminal (e.g. anaconda prompt) and run:
