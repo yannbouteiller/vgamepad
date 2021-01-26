@@ -107,6 +107,12 @@ class VX360Gamepad(VGamepad):
             sThumbRX=0,
             sThumbRY=0)
 
+    def reset(self):
+        """
+        Resets the report to the default state
+        """
+        self.report = self.get_default_report()
+
     def press_button(self, button):
         """
         Presses a button (no effect if already pressed)
@@ -223,6 +229,12 @@ class VDS4Gamepad(VGamepad):
             bTriggerR=0)
         vcom.DS4_REPORT_INIT(rep)
         return rep
+
+    def reset(self):
+        """
+        Resets the report to the default state
+        """
+        self.report = self.get_default_report()
 
     def press_button(self, button):
         """

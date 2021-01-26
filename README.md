@@ -19,17 +19,14 @@ Thus far, ```vgamepad``` is compatible with Windows only.
 ---
 
 ## Installation
-Before installing ```vgamepad```, you must install ViGEmBus on your system.
-Depending on your Windows version, download and execute the [ViGEmBus 64bit](https://github.com/ViGEm/ViGEmBus/releases/download/setup-v1.17.333/ViGEmBusSetup_x64.msi)
-or the [ViGEmBus 32bit](https://github.com/ViGEm/ViGEmBus/releases/download/setup-v1.17.333/ViGEmBusSetup_x86.msi) installer.
-
-Now that ViGEmBus is installed, open your favorite terminal (e.g. anaconda prompt) and run:
-
+Open your favorite terminal (e.g. anaconda prompt) and run:
 ```bash
 pip install vgamepad
 ```
+This automatically runs the installer of the ViGEmBus driver.
+Accept the licence agreement, click ```Install```, allow the installer to modify you PC, wait for completion and click ```Finish```.
 
-This will install ```vgamepad``` in your active python environment.
+```vgamepad``` is now installed in your active python environment.
 
 ---
 
@@ -115,6 +112,13 @@ gamepad.right_joystick_float(x_value_float=-1.0, y_value_float=0.8)  # values be
 gamepad.update()
 ```
 
+Reset to default state:
+```python
+gamepad.reset()
+
+gamepad.update()
+```
+
 Full example:
 ```python
 import vgamepad as vg
@@ -149,6 +153,13 @@ gamepad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
 gamepad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
 gamepad.right_trigger_float(value_float=0.0)
 gamepad.right_joystick_float(x_value_float=0.0, y_value_float=0.0)
+
+gamepad.update()
+
+time.sleep(1.0)
+
+# reset gamepad to default state
+gamepad.reset()
 
 gamepad.update()
 
@@ -259,6 +270,13 @@ class DS4_DPAD_DIRECTIONS(IntEnum):
     DS4_BUTTON_DPAD_NORTH = 0x0
 ```
 
+Reset to default state:
+```python
+gamepad.reset()
+
+gamepad.update()
+```
+
 Full example:
 ```python
 import vgamepad as vg
@@ -293,6 +311,13 @@ time.sleep(1.0)
 gamepad.release_button(button=vg.DS4_BUTTONS.DS4_BUTTON_TRIANGLE)
 gamepad.right_trigger_float(value_float=0.0)
 gamepad.right_joystick_float(x_value_float=0.0, y_value_float=0.0)
+
+gamepad.update()
+
+time.sleep(1.0)
+
+# reset gamepad to default state
+gamepad.reset()
 
 gamepad.update()
 
