@@ -247,6 +247,8 @@ gamepad.right_joystick_float(x_value_float=-1.0, y_value_float=0.8)  # values be
 gamepad.update()
 ```
 
+* **Note:** The Y axis on joysticks is inverted for consistency with the X360 API.
+
 Directional pad (hat):
 ```python
 gamepad.directional_pad(direction=vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST)
