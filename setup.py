@@ -29,7 +29,7 @@ setup(
     long_description_content_type="text/markdown",
     author='Yann Bouteiller',
     url='https://github.com/yannbouteiller/vgamepad',
-    download_url='https://github.com/yannbouteiller/vgamepad/archive/v0.0.3.tar.gz',
+    download_url='https://github.com/yannbouteiller/vgamepad/archive/refs/tags/v0.0.3.tar.gz',
     keywords=['virtual', 'gamepad', 'python', 'xbox', 'dualshock', 'controller', 'emulator'],
     install_requires=[],
     classifiers=[
