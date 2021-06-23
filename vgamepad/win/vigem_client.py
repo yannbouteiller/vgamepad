@@ -4,7 +4,7 @@ Adapted from ViGEm source
 
 import platform
 from pathlib import Path
-from ctypes import WinDLL, c_void_p, c_uint, c_ushort, c_ulong, c_bool
+from ctypes import CDLL, c_void_p, c_uint, c_ushort, c_ulong, c_bool
 from vgamepad.win.vigem_commons import XUSB_REPORT, DS4_REPORT, DS4_REPORT_EX, VIGEM_TARGET_TYPE
 
 if platform.architecture()[0] == "64bit":
@@ -13,7 +13,7 @@ else:
     arch = "x86"
 
 pathClient = Path(__file__).parent.absolute() / "vigem" / "client" / arch / "ViGEmClient.dll"
-vigemClient = WinDLL(str(pathClient))
+vigemClient = CDLL(str(pathClient))
 
 
 """

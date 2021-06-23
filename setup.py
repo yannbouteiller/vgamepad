@@ -22,14 +22,14 @@ with open("README.md", "r") as fh:
 setup(
     name='vgamepad',
     packages=[package for package in find_packages()],
-    version='0.0.2',
+    version='0.0.3',
     license='MIT',
     description='Virtual XBox360 and DualShock4 gamepads in python',
     long_description=long_description,
     long_description_content_type="text/markdown",
     author='Yann Bouteiller',
     url='https://github.com/yannbouteiller/vgamepad',
-    download_url='https://github.com/yannbouteiller/vgamepad/archive/v0.0.2.tar.gz',
+    download_url='https://github.com/yannbouteiller/vgamepad/archive/v0.0.3.tar.gz',
     keywords=['virtual', 'gamepad', 'python', 'xbox', 'dualshock', 'controller', 'emulator'],
     install_requires=[],
     classifiers=[
