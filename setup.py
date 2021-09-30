@@ -3,13 +3,25 @@ import platform
 from pathlib import Path
 import subprocess
 import sys
+import warnings
 
 assert platform.system() == 'Windows', "Sorry, this module is only compatible with Windows so far."
 
-if platform.architecture()[0] == "64bit":
+archstr = platform.machine()
+if archstr.endswith('64'):
     arch = "x64"
-else:
+elif archstr.endswith('86'):
     arch = "x86"
+else:
+    if platform.architecture()[0] == "64bit":
+        arch = "x64"
+    else:
+        arch = "x86"
+    warnings.warn(f"vgamepad could not determine your system architecture: \
+                  the vigembus installer will default to {arch}. If this is not your machine architecture, \
+                  please cancel the upcoming vigembus installation and install vigembus manually from \
+                  https://github.com/ViGEm/ViGEmBus/releases/tag/setup-v1.17.333")
+
 pathMsi = Path(__file__).parent.absolute() / "vgamepad" / "win" / "vigem" / "install" / arch / ("ViGEmBusSetup_" + arch + ".msi")
 
 # Prompt installation of the ViGEmBus driver (blocking call)
@@ -22,14 +34,14 @@ with open("README.md", "r") as fh:
 setup(
     name='vgamepad',
     packages=[package for package in find_packages()],
-    version='0.0.3',
+    version='0.0.4',
     license='MIT',
     description='Virtual XBox360 and DualShock4 gamepads in python',
     long_description=long_description,
     long_description_content_type="text/markdown",
     author='Yann Bouteiller',
     url='https://github.com/yannbouteiller/vgamepad',
-    download_url='https://github.com/yannbouteiller/vgamepad/archive/refs/tags/v0.0.3.tar.gz',
+    download_url='https://github.com/yannbouteiller/vgamepad/archive/refs/tags/v0.0.4.tar.gz',
     keywords=['virtual', 'gamepad', 'python', 'xbox', 'dualshock', 'controller', 'emulator'],
     install_requires=[],
     classifiers=[
