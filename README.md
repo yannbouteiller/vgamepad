@@ -325,6 +325,9 @@ gamepad.update()
 
 time.sleep(1.0)
 ```
+---
+### Troubleshooting:
+1.  Users on older python versions (notibly 3.8.1) may receive ```TypeError: item 3 in _argtypes_ passes a union by value, which is unsupported```.  If you are not planning on using the DualShock portion of this module, this issue can be remedied by commenting out Line 174 in [vigem_client.py](https://github.com/yannbouteiller/vgamepad/blob/main/vgamepad/win/vigem_client.py) ```vigem_target_ds4_update_ex.argtypes = (c_void_p, c_void_p, DS4_REPORT_EX)```.  Other fixes may include updating python to the most recent patch.
 
 ---
 
