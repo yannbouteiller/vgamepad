@@ -4,6 +4,7 @@ VGamepad API (Windows)
 
 import vgamepad.win.vigem_commons as vcom
 import vgamepad.win.vigem_client as vcli
+import ctypes
 from abc import ABC, abstractmethod
 
 
@@ -364,7 +365,7 @@ class VDS4Gamepad(VGamepad):
 
         :param: a DS4_REPORT_EX
         """
-        check_err(vcli.vigem_target_ds4_update_ex(self._busp, self._devicep, extended_report))
+        check_err(vcli.vigem_target_ds4_update_ex_ptr(self._busp, self._devicep, ctypes.byref(extended_report)))
 
     def target_alloc(self):
         return vcli.vigem_target_ds4_alloc()

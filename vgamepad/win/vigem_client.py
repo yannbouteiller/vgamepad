@@ -4,7 +4,7 @@ Adapted from ViGEm source
 
 import platform
 from pathlib import Path
-from ctypes import CDLL, c_void_p, c_uint, c_ushort, c_ulong, c_bool
+from ctypes import CDLL, POINTER, c_void_p, c_uint, c_ushort, c_ulong, c_bool
 from vgamepad.win.vigem_commons import XUSB_REPORT, DS4_REPORT, DS4_REPORT_EX, VIGEM_TARGET_TYPE
 
 if platform.architecture()[0] == "64bit":
@@ -164,15 +164,19 @@ vigem_target_ds4_update.argtypes = (c_void_p, c_void_p, DS4_REPORT)
 vigem_target_ds4_update.restype = c_uint
 
 """
+Note: this is a function not present in the master branch of vigem client.
+This fixes https://github.com/yannbouteiller/vgamepad/issues/5.
+When ctypes supports Union passed by value, this function will be removed.
+
 Sends a full size state report to the provided target device.
-@param 	    vigem 	The driver connection object.
-@param 	    target	The target device object.
-@param 	    report	The report buffer.
+@param 	    vigem 	    The driver connection object.
+@param 	    target	    The target device object.
+@param 	    report_ptr	A pointer to the report buffer.
 @returns	A VIGEM_ERROR.
 """
-vigem_target_ds4_update_ex = vigemClient.vigem_target_ds4_update_ex
-vigem_target_ds4_update_ex.argtypes = (c_void_p, c_void_p, DS4_REPORT_EX)
-vigem_target_ds4_update_ex.restype = c_uint
+vigem_target_ds4_update_ex_ptr = vigemClient.vigem_target_ds4_update_ex_ptr
+vigem_target_ds4_update_ex_ptr.argtypes = (c_void_p, c_void_p, POINTER(DS4_REPORT_EX))
+vigem_target_ds4_update_ex_ptr.restype = c_uint
 
 """
 Returns the internal index (serial number) the bus driver assigned to the provided
