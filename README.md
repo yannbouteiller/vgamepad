@@ -326,6 +326,43 @@ gamepad.update()
 time.sleep(1.0)
 ```
 
+### Receive state changes
+
+To receive LED ring changes and rumble/vibration requests, you need to define your own callback function, then call `gamepad.register_notification(your_callback)`. If nothing is supplied, it will simply print out all state changes ([int 0-255]LargeMortor, SmallMortor and LedNumber).
+
+Your callback function need to have 6 parameters: `client, target, LargeMotor, SmallMotor, LedNumber, UserData`. For more information, see [sdk/include/ViGEm/Client.h](https://github.com/ViGEm/ViGEmBus/blob/442ae3b85693b48866d0627af6f485f918b08d03/sdk/include/ViGEm/Client.h).
+
+To unregister, call `gampad.unregister_notification()`
+
+Example:
+
+```python
+import vgamepad as vg
+gamepad = vg.VX360Gamepad()
+
+def example_callback(client, target, LargeMotor, SmallMotor, LedNumber, UserData):
+  #Do your things here, change LED light, power a motor, or just return these value.
+  pass
+gamepad.register_notification()
+#When state changes, callbacks are made, default callback function will print out like this:
+```
+
+```bash
+LargeMotor: 64, SmallMotor: 30， LedNumber: 0
+LargeMotor: 255, SmallMotor: 255， LedNumber: 0
+LargeMotor: 67, SmallMotor: 32， LedNumber: 0
+LargeMotor: 65, SmallMotor: 32， LedNumber: 0
+LargeMotor: 64, SmallMotor: 32， LedNumber: 0
+LargeMotor: 63, SmallMotor: 31， LedNumber: 0
+LargeMotor: 63, SmallMotor: 81， LedNumber: 0
+LargeMotor: 127, SmallMotor: 127， LedNumber: 0
+LargeMotor: 16, SmallMotor: 83， LedNumber: 0
+LargeMotor: 5, SmallMotor: 28， LedNumber: 0
+LargeMotor: 0, SmallMotor: 19， LedNumber: 0
+LargeMotor: 0, SmallMotor: 57， LedNumber: 0
+LargeMotor: 0, SmallMotor: 51， LedNumber: 0
+```
+
 ---
 
 ### Advanced users:
@@ -343,3 +380,4 @@ All contributions to this project are welcome. Please submit a PR with your name
 - Yann Bouteiller
 ### Contributors:
 
+- JumpyzZ

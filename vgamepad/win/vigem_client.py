@@ -4,7 +4,7 @@ Adapted from ViGEm source
 
 import platform
 from pathlib import Path
-from ctypes import CDLL, POINTER, c_void_p, c_uint, c_ushort, c_ulong, c_bool
+from ctypes import CDLL, POINTER, CFUNCTYPE, c_void_p, c_uint, c_ushort, c_ulong, c_bool, c_ubyte
 from vgamepad.win.vigem_commons import XUSB_REPORT, DS4_REPORT, DS4_REPORT_EX, VIGEM_TARGET_TYPE
 
 if platform.architecture()[0] == "64bit":
@@ -227,3 +227,56 @@ vigem_target_x360_get_user_index.argtypes = (c_void_p, c_void_p, c_void_p)
 vigem_target_x360_get_user_index.restype = c_uint
 
 # TODO: add the missing APIs (those with C callback functions)
+"""
+Registers a function which gets called, when LED index or vibration state changes
+occur on the provided target device. This function fails if the provided
+target device isn't fully operational or in an erroneous state.
+@param 	vigem			The driver connection object.
+@param 	target			The target device object.
+@param 	notification	The notification callback.
+@param 	userData		The user data passed to the notification callback.
+@returns	A VIGEM_ERROR.
+"""
+vigem_target_x360_register_notification = vigemClient.vigem_target_x360_register_notification
+vigem_target_x360_register_notification.argtypes = (c_void_p, c_void_p, c_void_p, c_void_p)
+vigem_target_x360_register_notification.restype = c_uint
+
+"""
+Removes a previously registered callback function from the provided target object.
+@param 	target	The target device object.
+"""
+vigem_target_x360_unregister_notification = vigemClient.vigem_target_x360_unregister_notification
+vigem_target_x360_unregister_notification.argtypes = (c_void_p)
+vigem_target_x360_unregister_notification.restype = None
+
+"""
+Registers a function which gets called, when LightBar or vibration state changes
+occur on the provided target device. This function fails if the provided
+target device isn't fully operational or in an erroneous state.
+@param 	vigem			The driver connection object.
+@param 	target			The target device object.
+@param 	notification	The notification callback.
+@param 	userData		The user data passed to the notification callback.
+@returns	A VIGEM_ERROR.
+"""
+vigem_target_ds4_register_notification = vigemClient.vigem_target_ds4_register_notification
+vigem_target_ds4_register_notification.argtypes = (c_void_p, c_void_p, c_void_p, c_void_p)
+vigem_target_ds4_register_notification.restype = c_uint
+
+"""
+Removes a previously registered callback function from the provided target object.
+@param 	target	The target device object.
+"""
+vigem_target_ds4_unregister_notification = vigemClient.vigem_target_ds4_unregister_notification
+vigem_target_ds4_unregister_notification.argtypes = (c_void_p)
+vigem_target_ds4_unregister_notification.restype = None
+
+
+
+
+
+
+
+
+
+#

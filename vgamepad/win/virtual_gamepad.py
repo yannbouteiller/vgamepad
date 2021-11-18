@@ -5,13 +5,16 @@ VGamepad API (Windows)
 import vgamepad.win.vigem_commons as vcom
 import vgamepad.win.vigem_client as vcli
 import ctypes
+from ctypes import CFUNCTYPE, c_void_p, c_ubyte
 from abc import ABC, abstractmethod
-
+from inspect import signature #Check if user defined callback function is legal
 
 def check_err(err):
     if err != vcom.VIGEM_ERRORS.VIGEM_ERROR_NONE:
         raise Exception(vcom.VIGEM_ERRORS(err).name)
 
+def defaultCallback(client, target, LargeMotor, SmallMotor, LedNumber, UserData):
+    print("LargeMotor: {lm}, SmallMotor: {sm}， LedNumber: {ln}".format(lm = LargeMotor, sm = SmallMotor, ln = LedNumber))
 
 class VBus:
     """
@@ -38,6 +41,7 @@ class VGamepad(ABC):
         self.vbus = VBUS
         self._busp = self.vbus.get_busp()
         self._devicep = self.target_alloc()
+        self.CMPFUNC = CFUNCTYPE(None, c_void_p, c_void_p, c_ubyte, c_ubyte, c_ubyte, c_void_p)
         vcli.vigem_target_add(self._busp, self._devicep)
         assert vcli.vigem_target_is_attached(self._devicep), "The virtual device could not connect to ViGEmBus."
 
@@ -68,7 +72,7 @@ class VGamepad(ABC):
         :param: the new product ID of the virtual device
         """
         vcli.vigem_target_get_pid(self._devicep, pid)
-    
+
     def get_index(self):
         """
         :return: the internally used index of the target device
@@ -206,6 +210,15 @@ class VX360Gamepad(VGamepad):
 
     def target_alloc(self):
         return vcli.vigem_target_x360_alloc()
+
+    def register_notification(self, callback_func = defaultCallback):
+        if not signature(callback_func) == signature(defaultCallback):
+            raise TypeError("Needed callback function signature: {need}, but got: {got}".format(need = signature(defaultCallback), got = signature(callback_func)))
+        self.cmp_func = self.CMPFUNC(callback_func) #keep its reference, otherwise programe will crash when a callback is made.
+        check_err(vcli.vigem_target_x360_register_notification(self._busp, self._devicep, self.cmp_func, None))
+
+    def unregister_notification(self):
+        vcli.vigem_target_x360_unregister_notification(self._devicep)
 
 
 class VDS4Gamepad(VGamepad):
@@ -369,3 +382,12 @@ class VDS4Gamepad(VGamepad):
 
     def target_alloc(self):
         return vcli.vigem_target_ds4_alloc()
+
+    def register_callback(self, callback_func = defaultCallback):
+        if not signature(callback_func) == signature(defaultCallback):
+            raise TypeError("Needed callback function signature: {need}, but got: {got}".format(need = signature(defaultCallback), got = signature(callback_func)))
+        self.cmp_func = self.CMPFUNC(callback_func)
+        check_err(vcli.vigem_target_ds4_register_notification(self._busp, self._devicep, self.cmp_func, None))
+
+    def unregister_notification(self):
+        vcli.vigem_target_ds4_unregister_notification(self._devicep)
