@@ -331,9 +331,9 @@ time.sleep(1.0)
 
 ### Rumble and LEDs:
 
-`vgamepad` enables registering custom callback function to handle updates of the rumble motors, and of the LED ring.
+`vgamepad` enables registering custom callback functions to handle updates of the rumble motors, and of the LED ring.
 
-The custom callback function requires 6 parameters:
+Custom callback functions require 6 parameters:
 ```python
 def my_callback(client, target, large_motor, small_motor, led_number, user_data):
     """
