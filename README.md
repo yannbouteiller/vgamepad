@@ -14,6 +14,7 @@ Thus far, ```vgamepad``` is compatible with Windows only.
 - [Getting started](#getting-started)
   - [XBox360 gamepad](#xbox360-gamepad)
   - [DualShock4 gamepad](#dualshock4-gamepad)
+  - [Rumble and LEDs](#rumble-and-leds)
 - [Contribute](#authors)
 
 ---
@@ -326,41 +327,51 @@ gamepad.update()
 time.sleep(1.0)
 ```
 
-### Receive state changes
+---
 
-To receive LED ring changes and rumble/vibration requests, you need to define your own callback function, then call `gamepad.register_notification(your_callback)`. If nothing is supplied, it will simply print out all state changes ([int 0-255]LargeMortor, SmallMortor and LedNumber).
+### Rumble and LEDs:
 
-Your callback function need to have 6 parameters: `client, target, LargeMotor, SmallMotor, LedNumber, UserData`. For more information, see [sdk/include/ViGEm/Client.h](https://github.com/ViGEm/ViGEmBus/blob/442ae3b85693b48866d0627af6f485f918b08d03/sdk/include/ViGEm/Client.h).
+`vgamepad` enables registering custom callback function to handle updates of the rumble motors, and of the LED ring.
 
-To unregister, call `gampad.unregister_notification()`
-
-Example:
-
+The custom callback function requires 6 parameters:
 ```python
-import vgamepad as vg
-gamepad = vg.VX360Gamepad()
+def my_callback(client, target, large_motor, small_motor, led_number, user_data):
+    """
+    Callback function triggered at each received state change
 
-def example_callback(client, target, LargeMotor, SmallMotor, LedNumber, UserData):
-  #Do your things here, change LED light, power a motor, or just return these value.
-  pass
-gamepad.register_notification()
-#When state changes, callbacks are made, default callback function will print out like this:
+    :param client: vigem bus ID
+    :param target: vigem device ID
+    :param large_motor: integer in [0, 255] representing the state of the large motor
+    :param small_motor: integer in [0, 255] representing the state of the small motor
+    :param led_number: integer in [0, 255] representing the state of the LED ring
+    :param user_data: placeholder, do not use
+    """
+    # Do your things here. For instance:
+    print(f"Received notification for client {client}, target {target}")
+    print(f"large motor: {large_motor}, small motor: {small_motor}")
+    print(f"led number: {led_number}")
 ```
 
-```bash
-LargeMotor: 64, SmallMotor: 30， LedNumber: 0
-LargeMotor: 255, SmallMotor: 255， LedNumber: 0
-LargeMotor: 67, SmallMotor: 32， LedNumber: 0
-LargeMotor: 65, SmallMotor: 32， LedNumber: 0
-LargeMotor: 64, SmallMotor: 32， LedNumber: 0
-LargeMotor: 63, SmallMotor: 31， LedNumber: 0
-LargeMotor: 63, SmallMotor: 81， LedNumber: 0
-LargeMotor: 127, SmallMotor: 127， LedNumber: 0
-LargeMotor: 16, SmallMotor: 83， LedNumber: 0
-LargeMotor: 5, SmallMotor: 28， LedNumber: 0
-LargeMotor: 0, SmallMotor: 19， LedNumber: 0
-LargeMotor: 0, SmallMotor: 57， LedNumber: 0
-LargeMotor: 0, SmallMotor: 51， LedNumber: 0
+The callback function needs to be registered as follows:
+```python
+gamepad.register_notification(callback_function=my_callback)
+```
+
+Each time the state of the gamepad is changed (for example by a video game that sends rumbling requests), the callback function will then be called.
+
+In our example, when state changes are received, something like the following will be printed to `stdout`:
+```terminal
+Received notification for client 2876897124288, target 2876931874736
+large motor: 255, small motor: 255
+led number: 0
+Received notification for client 2876897124288, target 2876931874736
+large motor: 0, small motor: 0
+led number: 0
+```
+
+If not needed anymore, the callback function can be unregistered:
+```python
+gamepad.unregister_notification()
 ```
 
 ---

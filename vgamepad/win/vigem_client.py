@@ -226,7 +226,6 @@ vigem_target_x360_get_user_index = vigemClient.vigem_target_x360_get_user_index
 vigem_target_x360_get_user_index.argtypes = (c_void_p, c_void_p, c_void_p)
 vigem_target_x360_get_user_index.restype = c_uint
 
-# TODO: add the missing APIs (those with C callback functions)
 """
 Registers a function which gets called, when LED index or vibration state changes
 occur on the provided target device. This function fails if the provided
@@ -246,7 +245,7 @@ Removes a previously registered callback function from the provided target objec
 @param 	target	The target device object.
 """
 vigem_target_x360_unregister_notification = vigemClient.vigem_target_x360_unregister_notification
-vigem_target_x360_unregister_notification.argtypes = (c_void_p)
+vigem_target_x360_unregister_notification.argtypes = (c_void_p, )
 vigem_target_x360_unregister_notification.restype = None
 
 """
@@ -268,15 +267,5 @@ Removes a previously registered callback function from the provided target objec
 @param 	target	The target device object.
 """
 vigem_target_ds4_unregister_notification = vigemClient.vigem_target_ds4_unregister_notification
-vigem_target_ds4_unregister_notification.argtypes = (c_void_p)
+vigem_target_ds4_unregister_notification.argtypes = (c_void_p, )
 vigem_target_ds4_unregister_notification.restype = None
-
-
-
-
-
-
-
-
-
-#

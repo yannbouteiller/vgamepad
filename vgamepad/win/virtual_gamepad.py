@@ -7,14 +7,27 @@ import vgamepad.win.vigem_client as vcli
 import ctypes
 from ctypes import CFUNCTYPE, c_void_p, c_ubyte
 from abc import ABC, abstractmethod
-from inspect import signature #Check if user defined callback function is legal
+from inspect import signature  # Check if user defined callback function is legal
+
 
 def check_err(err):
     if err != vcom.VIGEM_ERRORS.VIGEM_ERROR_NONE:
         raise Exception(vcom.VIGEM_ERRORS(err).name)
 
-def defaultCallback(client, target, LargeMotor, SmallMotor, LedNumber, UserData):
-    print("LargeMotor: {lm}, SmallMotor: {sm}， LedNumber: {ln}".format(lm = LargeMotor, sm = SmallMotor, ln = LedNumber))
+
+def dummy_callback(client, target, large_motor, small_motor, led_number, user_data):
+    """
+    Pattern for callback functions to be registered as notifications
+
+    :param client: vigem bus ID
+    :param target: vigem device ID
+    :param large_motor: integer in [0, 255] representing the state of the large motor
+    :param small_motor: integer in [0, 255] representing the state of the small motor
+    :param led_number: integer in [0, 255] representing the state of the LED ring
+    :param user_data: placeholder, do not use
+    """
+    pass
+
 
 class VBus:
     """
@@ -42,6 +55,7 @@ class VGamepad(ABC):
         self._busp = self.vbus.get_busp()
         self._devicep = self.target_alloc()
         self.CMPFUNC = CFUNCTYPE(None, c_void_p, c_void_p, c_ubyte, c_ubyte, c_ubyte, c_void_p)
+        self.cmp_func = None
         vcli.vigem_target_add(self._busp, self._devicep)
         assert vcli.vigem_target_is_attached(self._devicep), "The virtual device could not connect to ViGEmBus."
 
@@ -208,17 +222,25 @@ class VX360Gamepad(VGamepad):
         """
         check_err(vcli.vigem_target_x360_update(self._busp, self._devicep, self.report))
 
-    def target_alloc(self):
-        return vcli.vigem_target_x360_alloc()
+    def register_notification(self, callback_function):
+        """
+        Registers a callback function that can handle force feedback, leds, etc.
 
-    def register_notification(self, callback_func = defaultCallback):
-        if not signature(callback_func) == signature(defaultCallback):
-            raise TypeError("Needed callback function signature: {need}, but got: {got}".format(need = signature(defaultCallback), got = signature(callback_func)))
-        self.cmp_func = self.CMPFUNC(callback_func) #keep its reference, otherwise programe will crash when a callback is made.
+        :param: a function of the form: my_func(client, target, large_motor, small_motor, led_number, user_data)
+        """
+        if not signature(callback_function) == signature(dummy_callback):
+            raise TypeError("Needed callback function signature: {}, but got: {}".format(signature(dummy_callback), signature(callback_function)))
+        self.cmp_func = self.CMPFUNC(callback_function)  # keep its reference, otherwise the program will crash when a callback is made.
         check_err(vcli.vigem_target_x360_register_notification(self._busp, self._devicep, self.cmp_func, None))
 
     def unregister_notification(self):
+        """
+        Unregisters a previously registered callback function.
+        """
         vcli.vigem_target_x360_unregister_notification(self._devicep)
+
+    def target_alloc(self):
+        return vcli.vigem_target_x360_alloc()
 
 
 class VDS4Gamepad(VGamepad):
@@ -380,14 +402,22 @@ class VDS4Gamepad(VGamepad):
         """
         check_err(vcli.vigem_target_ds4_update_ex_ptr(self._busp, self._devicep, ctypes.byref(extended_report)))
 
-    def target_alloc(self):
-        return vcli.vigem_target_ds4_alloc()
+    def register_notification(self, callback_function):
+        """
+        Registers a callback function that can handle force feedback, leds, etc.
 
-    def register_callback(self, callback_func = defaultCallback):
-        if not signature(callback_func) == signature(defaultCallback):
-            raise TypeError("Needed callback function signature: {need}, but got: {got}".format(need = signature(defaultCallback), got = signature(callback_func)))
-        self.cmp_func = self.CMPFUNC(callback_func)
+        :param: a function of the form: my_func(client, target, large_motor, small_motor, led_number, user_data)
+        """
+        if not signature(callback_function) == signature(dummy_callback):
+            raise TypeError("Needed callback function signature: {}, but got: {}".format(signature(dummy_callback), signature(callback_function)))
+        self.cmp_func = self.CMPFUNC(callback_function)
         check_err(vcli.vigem_target_ds4_register_notification(self._busp, self._devicep, self.cmp_func, None))
 
     def unregister_notification(self):
+        """
+        Unregisters a previously registered callback function.
+        """
         vcli.vigem_target_ds4_unregister_notification(self._devicep)
+
+    def target_alloc(self):
+        return vcli.vigem_target_ds4_alloc()
