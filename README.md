@@ -383,7 +383,8 @@ See [virtual_gamepad.py](https://github.com/yannbouteiller/vgamepad/blob/main/vg
 ---
 
 ## Contribute
-All contributions to this project are welcome. Please submit a PR with your name in the Contributors list.
+All contributions to this project are welcome.
+Please submit a PR with your name and a short description of your contribution in the Contributors list.
 
 ---
 ## Authors
@@ -391,4 +392,4 @@ All contributions to this project are welcome. Please submit a PR with your name
 - Yann Bouteiller
 ### Contributors:
 
-- JumpyzZ
+- JumpyzZ (rumble and LEDs)
