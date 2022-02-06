@@ -26,7 +26,7 @@ pathMsi = Path(__file__).parent.absolute() / "vgamepad" / "win" / "vigem" / "ins
 
 # Prompt installation of the ViGEmBus driver (blocking call)
 if sys.argv[1] != 'egg_info' and sys.argv[1] != 'sdist':
-    subprocess.call('msiexec /i %s' % str(pathMsi), shell=True)
+    subprocess.call(['msiexec', '/i', '%s' % str(pathMsi)], shell=True)
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
