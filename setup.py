@@ -7,6 +7,8 @@ import warnings
 
 assert platform.system() == 'Windows', "Sorry, this module is only compatible with Windows so far."
 
+VIGEMBUS_VERSION = "1.17.333.0"
+
 archstr = platform.machine()
 if archstr.endswith('64'):
     arch = "x64"
@@ -24,9 +26,30 @@ else:
 
 pathMsi = Path(__file__).parent.absolute() / "vgamepad" / "win" / "vigem" / "install" / arch / ("ViGEmBusSetup_" + arch + ".msi")
 
+# Try to detect vigembus:
+try:
+    registry_str = subprocess.check_output(
+        ['reg', 'query', r'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', '/s'], text=True).lower()
+    j = registry_str.find('vigembus')
+    if j > 0:
+        vigem_installed = True
+        i = registry_str[:j].rfind('displayversion')
+        if i != -1:
+            vigem_version = registry_str[i:j].split()[2]
+            if vigem_version != VIGEMBUS_VERSION:
+                warnings.warn(f"found vigembus version {vigem_version} on your system. Expected {VIGEMBUS_VERSION}.")
+    else:
+        vigem_installed = False
+except Exception as e:
+    vigem_installed = False
+    warnings.warn(f"vgamepad could not run the vigembus detection on your system, \
+                  an exception has been caught while trying: \n{e}")
+
+
 # Prompt installation of the ViGEmBus driver (blocking call)
 if sys.argv[1] != 'egg_info' and sys.argv[1] != 'sdist':
-    subprocess.call(['msiexec', '/i', '%s' % str(pathMsi)], shell=True)
+    if not vigem_installed:
+        subprocess.call(['msiexec', '/i', '%s' % str(pathMsi)], shell=True)
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -34,14 +57,14 @@ with open("README.md", "r") as fh:
 setup(
     name='vgamepad',
     packages=[package for package in find_packages()],
-    version='0.0.7',
+    version='0.0.8',
     license='MIT',
     description='Virtual XBox360 and DualShock4 gamepads in python',
     long_description=long_description,
     long_description_content_type="text/markdown",
     author='Yann Bouteiller',
     url='https://github.com/yannbouteiller/vgamepad',
-    download_url='https://github.com/yannbouteiller/vgamepad/archive/refs/tags/v0.0.7.tar.gz',
+    download_url='https://github.com/yannbouteiller/vgamepad/archive/refs/tags/v0.0.8.tar.gz',
     keywords=['virtual', 'gamepad', 'python', 'xbox', 'dualshock', 'controller', 'emulator'],
     install_requires=[],
     classifiers=[
