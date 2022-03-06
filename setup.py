@@ -45,7 +45,6 @@ except Exception as e:
     warnings.warn(f"vgamepad could not run the vigembus detection on your system, \
                   an exception has been caught while trying: \n{e}")
 
-
 # Prompt installation of the ViGEmBus driver (blocking call)
 if sys.argv[1] != 'egg_info' and sys.argv[1] != 'sdist':
     if not vigem_installed:
