@@ -30,7 +30,7 @@ pathMsi = Path(__file__).parent.absolute() / "vgamepad" / "win" / "vigem" / "ins
 try:
     registry_str = subprocess.check_output(
         ['reg', 'query', r'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', '/s'], text=True).lower()
-    j = registry_str.find('vigembus')
+    j = registry_str.find('nefarius virtual gamepad emulation bus driver')
     if j > 0:
         vigem_installed = True
         i = registry_str[:j].rfind('displayversion')
