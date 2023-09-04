@@ -319,7 +319,7 @@ class VDS4Gamepad(VGamepad):
         # Enable joysticks
         self.device.enable(
             libevdev.EV_ABS.ABS_X,
-            libevdev.InputAbsInfo(minimum=0, maximum=255, valu=127))
+            libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
         self.device.enable(
             libevdev.EV_ABS.ABS_Y,
             libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
