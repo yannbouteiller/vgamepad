@@ -12,6 +12,8 @@ On Linux, ```vgamepad``` uses `libevdev` instead.
 
 ## Quick links
 - [Installation](#installation)
+  - [Windows](#windows)
+  - [Linux](#linux)
 - [Getting started](#getting-started)
   - [XBox360 gamepad](#xbox360-gamepad)
   - [DualShock4 gamepad](#dualshock4-gamepad)
@@ -34,7 +36,29 @@ Accept the licence agreement, click ```Install```, allow the installer to modify
 ```vgamepad``` is now installed in your active python environment.
 
 ### Linux:
-Open your favorite terminal (e.g. anaconda prompt) and run:
+
+#### Prerequisite
+
+On Linux, `vgamepad` needs access to `uinput`.
+
+To give yourself permission to access `uinput` for the current session, open a terminal and execute:
+```bash
+sudo chmod +0666 /dev/uinput
+```
+
+Create a `udev` rule to set the permission permanently (otherwise the permission will be removed next time you log in):
+```bash
+sudo nano /etc/udev/rules.d/50-uinput.rules 
+```
+In `nano`, paste the following line:
+```bash
+KERNEL=="uinput", TAG+="uaccess"
+```
+Save by pressing `CTRL+o`, `ENTER`, and exit `nano` by pressing `CTRL+x`
+
+#### vgamepad installation
+
+Run:
 ```bash
 pip install vgamepad
 ```
