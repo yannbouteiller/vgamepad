@@ -6,7 +6,9 @@ Virtual XBox360 and DualShock4 gamepads in python
 Virtual Gamepad (```vgamepad```) is a small python library that emulates XBox360 and DualShock4 gamepads on your system.
 It enables controlling e.g. a video-game that requires analog input, directly from your python script.
 
-Under the hood, ```vgamepad``` uses the [ViGEm](https://github.com/ViGEm) C++ framework on Windows, for which it essentially provides python bindings and a user-friendly interface. On Linux, we use `libevdev` directly instead.
+On Windows, ```vgamepad``` uses the [ViGEm](https://github.com/ViGEm) C++ framework, for which it essentially provides python bindings and a user-friendly interface.
+
+On Linux, ```vgamepad``` uses `libevdev` instead.
 
 ## Quick links
 - [Installation](#installation)
@@ -19,12 +21,23 @@ Under the hood, ```vgamepad``` uses the [ViGEm](https://github.com/ViGEm) C++ fr
 ---
 
 ## Installation
+
+### Windows:
 Open your favorite terminal (e.g. anaconda prompt) and run:
 ```bash
 pip install vgamepad
 ```
-This automatically runs the installer of the ViGEmBus driver on Windows.
+
+This automatically runs the installer of the ViGEmBus driver.
 Accept the licence agreement, click ```Install```, allow the installer to modify you PC, wait for completion and click ```Finish```.
+
+```vgamepad``` is now installed in your active python environment.
+
+### Linux:
+Open your favorite terminal (e.g. anaconda prompt) and run:
+```bash
+pip install vgamepad
+```
 
 ```vgamepad``` is now installed in your active python environment.
 
@@ -330,9 +343,9 @@ time.sleep(1.0)
 
 ### Rumble and LEDs:
 
-`vgamepad` enables registering custom callback functions to handle updates of the rumble motors, and of the LED ring.
+_**Note**: Windows only, not yet ported to Linux._
 
-**Note**: The callback functionality has not yet been ported to Linux.
+`vgamepad` enables registering custom callback functions to handle updates of the rumble motors, and of the LED ring.
 
 Custom callback functions require 6 parameters:
 ```python

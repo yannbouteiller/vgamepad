@@ -5,6 +5,10 @@ import subprocess
 import sys
 import warnings
 
+
+assert platform.system() in ('Windows', 'Linux'), "vgamepad is only supported on Windows and Linux."
+
+
 VIGEMBUS_VERSION = "1.17.333.0"
 
 archstr = platform.machine()
@@ -66,7 +70,7 @@ setup(
     url='https://github.com/yannbouteiller/vgamepad',
     download_url='https://github.com/yannbouteiller/vgamepad/archive/refs/tags/v0.1.0.tar.gz',
     keywords=['virtual', 'gamepad', 'python', 'xbox', 'dualshock', 'controller', 'emulator'],
-    install_requires=['libevdev~=0.11'] if is_windows is False else [],
+    install_requires=['libevdev~=0.11'] if not is_windows else [],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
