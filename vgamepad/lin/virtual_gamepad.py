@@ -65,7 +65,8 @@ class VX360Gamepad(VGamepad):
 
     def __init__(self):
         super().__init__()
-        self.device.name = 'Xbox360 Controller'
+        self.device.name = 'Xbox 360 Controller'
+
         # Enable buttons
         self.device.enable(libevdev.EV_KEY.BTN_SOUTH)
         self.device.enable(libevdev.EV_KEY.BTN_EAST)
