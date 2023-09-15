@@ -79,7 +79,7 @@ class VX360Gamepad(VGamepad):
         self.device.enable(libevdev.EV_KEY.BTN_SELECT)
         self.device.enable(libevdev.EV_KEY.BTN_START)
 
-        self.device.enable(libevdev.EV_KEY.BTN_MODE)
+        # self.device.enable(libevdev.EV_KEY.BTN_MODE)  # FIXME: On Linux, this messes up the button order
 
         self.device.enable(libevdev.EV_KEY.BTN_THUMBL)
         self.device.enable(libevdev.EV_KEY.BTN_THUMBR)
@@ -110,16 +110,12 @@ class VX360Gamepad(VGamepad):
                                   fuzz=16,
                                   flat=128))
         # Enable triggers
-        self.device.enable(libevdev.EV_ABS.ABS_Z,
-                           libevdev.InputAbsInfo(minimum=0, maximum=1023))
-        self.device.enable(libevdev.EV_ABS.ABS_RZ,
-                           libevdev.InputAbsInfo(minimum=0, maximum=1023))
+        self.device.enable(libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=1023))
+        self.device.enable(libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=1023))
 
         # Enable D-Pad
-        self.device.enable(libevdev.EV_ABS.ABS_HAT0X,
-                           libevdev.InputAbsInfo(minimum=-1, maximum=1))
-        self.device.enable(libevdev.EV_ABS.ABS_HAT0Y,
-                           libevdev.InputAbsInfo(minimum=-1, maximum=1))
+        self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1))
+        self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1))
 
         self.uinput = self.device.create_uinput_device()
 
@@ -133,7 +129,7 @@ class VX360Gamepad(VGamepad):
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB: libevdev.EV_KEY.BTN_THUMBR,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER: libevdev.EV_KEY.BTN_TL,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER: libevdev.EV_KEY.BTN_TR,
-        vcom.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE: libevdev.EV_KEY.BTN_MODE,
+        # vcom.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE: libevdev.EV_KEY.BTN_MODE,  # FIXME: does not work properly on Linux
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_A: libevdev.EV_KEY.BTN_SOUTH,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_B: libevdev.EV_KEY.BTN_EAST,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_X: libevdev.EV_KEY.BTN_NORTH,
@@ -143,6 +139,7 @@ class VX360Gamepad(VGamepad):
     def get_default_report(self):
         return vcom.XUSB_REPORT(wButtons=0,
                                 bLeftTrigger=0,
+                                bRightTrigger=0,
                                 sThumbLX=0,
                                 sThumbLY=0,
                                 sThumbRX=0,
@@ -158,6 +155,7 @@ class VX360Gamepad(VGamepad):
         """
         Presses a button (no effect if already pressed)
         All possible buttons are in XUSB_BUTTON
+        Note: The GUIDE button is not available on Linux
 
         :param: a XUSB_BUTTON field, e.g. XUSB_BUTTON.XUSB_GAMEPAD_X
         """
@@ -247,26 +245,20 @@ class VX360Gamepad(VGamepad):
         # Update buttons
         for btn, key in self.XUSB_BUTTON_TO_EV_KEY.items():
             self.uinput.send_events([
-                libevdev.InputEvent(key, value=(self.report.wButtons & btn)),
+                libevdev.InputEvent(key, value=(int(bool(self.report.wButtons & btn)))),
             ])
 
         # Update axes
         self.uinput.send_events([
             # Left joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_X,
-                                value=self.report.sThumbLX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Y,
-                                value=self.report.sThumbLY),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=self.report.sThumbLX),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=self.report.sThumbLY),
             # Right joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RX,
-                                value=self.report.sThumbRX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RY,
-                                value=self.report.sThumbRY),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RX, value=self.report.sThumbRX),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=self.report.sThumbRY),
             # Triggers
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Z,
-                                value=self.report.bLeftTrigger * 4),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ,
-                                value=self.report.bRightTrigger * 4)
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_Z, value=self.report.bLeftTrigger * 4),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ, value=self.report.bRightTrigger * 4)
         ])
 
         hat0x_value = bool(self.report.wButtons
@@ -282,8 +274,7 @@ class VX360Gamepad(VGamepad):
             libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat0y_value)
         ])
 
-        self.uinput.send_events(
-            [libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
+        self.uinput.send_events([libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
 
     def target_alloc(self):
         return self.uinput
@@ -318,24 +309,14 @@ class VDS4Gamepad(VGamepad):
         self.device.enable(libevdev.EV_KEY.BTN_THUMBR)
 
         # Enable joysticks
-        self.device.enable(
-            libevdev.EV_ABS.ABS_X,
-            libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
-        self.device.enable(
-            libevdev.EV_ABS.ABS_Y,
-            libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
-        self.device.enable(
-            libevdev.EV_ABS.ABS_RX,
-            libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
-        self.device.enable(
-            libevdev.EV_ABS.ABS_RY,
-            libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
+        self.device.enable(libevdev.EV_ABS.ABS_X, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
+        self.device.enable(libevdev.EV_ABS.ABS_Y, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
+        self.device.enable(libevdev.EV_ABS.ABS_RX, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
+        self.device.enable(libevdev.EV_ABS.ABS_RY, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
 
         # Enable triggers
-        self.device.enable(libevdev.EV_ABS.ABS_Z,
-                           libevdev.InputAbsInfo(minimum=0, maximum=255))
-        self.device.enable(libevdev.EV_ABS.ABS_RZ,
-                           libevdev.InputAbsInfo(minimum=0, maximum=255))
+        self.device.enable(libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=255))
+        self.device.enable(libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=255))
 
         self.uinput = self.device.create_uinput_device()
 
@@ -495,26 +476,20 @@ class VDS4Gamepad(VGamepad):
         """
         for btn, key in self.DS4_BUTTON_TO_EV_KEY.items():
             self.uinput.send_events([
-                libevdev.InputEvent(key, value=(self.reprot.wButtons & btn)),
+                libevdev.InputEvent(key, value=(int(bool(self.report.wButtons & btn)))),
             ])
 
         # Update axes
         self.uinput.send_events([
             # Left joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_X,
-                                value=self.report.sThumbLX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Y,
-                                value=self.report.sThumbLY),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=self.report.sThumbLX),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=self.report.sThumbLY),
             # Right joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RX,
-                                value=self.report.sThumbXX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RY,
-                                value=self.report.sThumbXY),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RX, value=self.report.sThumbXX),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=self.report.sThumbXY),
             # Triggers
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Z,
-                                value=self.report.bLeftTrigger),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ,
-                                value=self.report.bRightTrigger)
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_Z, value=self.report.bLeftTrigger),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ, value=self.report.bRightTrigger)
         ])
         hat0x_value = bool(self.report.wButtons
                            & vcom.DS4_BUTTONS.DS4_BUTTON_DPAD_EAST) - bool(
@@ -529,8 +504,7 @@ class VDS4Gamepad(VGamepad):
             libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat0y_value)
         ])
 
-        self.uinput.send_events(
-            [libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
+        self.uinput.send_events([libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
 
     def target_alloc(self):
         return self.uinput
