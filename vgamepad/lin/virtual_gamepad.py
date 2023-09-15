@@ -2,7 +2,6 @@
 VGamepad API (Linux)
 """
 from abc import ABC, abstractmethod
-from time import sleep
 
 import libevdev
 import vgamepad.win.vigem_commons as vcom
@@ -110,16 +109,12 @@ class VX360Gamepad(VGamepad):
                                   fuzz=16,
                                   flat=128))
         # Enable triggers
-        self.device.enable(libevdev.EV_ABS.ABS_Z,
-                           libevdev.InputAbsInfo(minimum=0, maximum=1023))
-        self.device.enable(libevdev.EV_ABS.ABS_RZ,
-                           libevdev.InputAbsInfo(minimum=0, maximum=1023))
+        self.device.enable(libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=1023))
+        self.device.enable(libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=1023))
 
         # Enable D-Pad
-        self.device.enable(libevdev.EV_ABS.ABS_HAT0X,
-                           libevdev.InputAbsInfo(minimum=-1, maximum=1))
-        self.device.enable(libevdev.EV_ABS.ABS_HAT0Y,
-                           libevdev.InputAbsInfo(minimum=-1, maximum=1))
+        self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1))
+        self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1))
 
         self.uinput = self.device.create_uinput_device()
 
@@ -143,6 +138,7 @@ class VX360Gamepad(VGamepad):
     def get_default_report(self):
         return vcom.XUSB_REPORT(wButtons=0,
                                 bLeftTrigger=0,
+                                bRightTrigger=0,
                                 sThumbLX=0,
                                 sThumbLY=0,
                                 sThumbRX=0,
@@ -247,7 +243,7 @@ class VX360Gamepad(VGamepad):
         # Update buttons
         for btn, key in self.XUSB_BUTTON_TO_EV_KEY.items():
             self.uinput.send_events([
-                libevdev.InputEvent(key, value=(self.report.wButtons & btn)),
+                libevdev.InputEvent(key, value=(int(bool(self.report.wButtons & btn)))),
             ])
 
         # Update axes
@@ -495,7 +491,7 @@ class VDS4Gamepad(VGamepad):
         """
         for btn, key in self.DS4_BUTTON_TO_EV_KEY.items():
             self.uinput.send_events([
-                libevdev.InputEvent(key, value=(self.reprot.wButtons & btn)),
+                libevdev.InputEvent(key, value=(self.report.wButtons & btn)),
             ])
 
         # Update axes
