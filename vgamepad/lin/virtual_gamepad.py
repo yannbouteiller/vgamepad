@@ -337,15 +337,17 @@ class VDS4Gamepad(VGamepad):
     }
 
     def get_default_report(self):
-        report = vcom.DS4_REPORT(bThumbLX=0,
-                                 bThumbLY=0,
-                                 bThumbRX=0,
-                                 bThumbRY=0,
-                                 wButtons=0,
-                                 bSpecial=0,
-                                 bTriggerL=0,
-                                 bTriggerR=0)
-        return report
+        rep = vcom.DS4_REPORT(
+            bThumbLX=0,
+            bThumbLY=0,
+            bThumbRX=0,
+            bThumbRY=0,
+            wButtons=0,
+            bSpecial=0,
+            bTriggerL=0,
+            bTriggerR=0)
+        vcom.DS4_REPORT_INIT(rep)
+        return rep
 
     def reset(self):
         """
@@ -482,23 +484,23 @@ class VDS4Gamepad(VGamepad):
         # Update axes
         self.uinput.send_events([
             # Left joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=self.report.sThumbLX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=self.report.sThumbLY),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=self.report.bThumbLX),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=self.report.bThumbLY),
             # Right joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RX, value=self.report.sThumbXX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=self.report.sThumbXY),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RX, value=self.report.bThumbRX),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=self.report.bThumbRY),
             # Triggers
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Z, value=self.report.bLeftTrigger),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ, value=self.report.bRightTrigger)
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_Z, value=self.report.bTriggerL),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ, value=self.report.bTriggerR)
         ])
         hat0x_value = bool(self.report.wButtons
-                           & vcom.DS4_BUTTONS.DS4_BUTTON_DPAD_EAST) - bool(
+                           & vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST) - bool(
                                self.report.wButtons
-                               & vcom.DS4_BUTTONS.DS4_BUTTON_DPAD_WEST)
+                               & vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST)
         hat0y_value = bool(self.report.wButtons
-                           & vcom.DS4_BUTTONS.DS4_BUTTON_DPAD_SOUTH) - bool(
+                           & vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTH) - bool(
                                self.report.wButtons
-                               & vcom.DS4_BUTTONS.DS4_BUTTON_DPAD_NORTH)
+                               & vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH)
         self.uinput.send_events([
             libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0X, value=hat0x_value),
             libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat0y_value)

@@ -8,7 +8,7 @@ It enables controlling e.g. a video-game that requires analog input, directly fr
 
 On Windows, ```vgamepad``` uses the [ViGEm](https://github.com/ViGEm) C++ framework, for which it essentially provides python bindings and a user-friendly interface.
 
-On Linux, ```vgamepad``` uses `libevdev` instead.
+On Linux, ```vgamepad``` uses `libevdev`.
 
 ## Quick links
 - [Installation](#installation)
@@ -284,7 +284,7 @@ gamepad.right_joystick_float(x_value_float=-1.0, y_value_float=0.8)  # values be
 gamepad.update()
 ```
 
-* **Note:** The Y axis on joysticks is inverted for consistency with the X360 API.
+* **Note:** Since version `0.1.0`, the Y axis on joysticks is inverted compared to the X360 API (native VIGEm behavior).
 
 Directional pad (hat):
 ```python
@@ -367,7 +367,7 @@ time.sleep(1.0)
 
 ### Rumble and LEDs:
 
-_**Note**: Windows only, not yet ported to Linux._
+_**Note**: Rumble and LEDs are supported on Windows only (not yet ported to Linux)._
 
 `vgamepad` enables registering custom callback functions to handle updates of the rumble motors, and of the LED ring.
 

@@ -16,6 +16,76 @@ import pygame
 
 WAIT_S = 0.1
 SYSTEM = platform.system()
+LEFT_TRIGGER = 4 if SYSTEM == "Windows" else 2
+RIGHT_TRIGGER = 5
+LEFT_JOYSTICK = (0, 1)
+RIGHT_JOYSTICK = (2, 3) if SYSTEM == "Windows" else (3, 4)
+
+X360_TEST_BUTTONS = [
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_A, 0),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_B, 1),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_X, 2),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_Y, 3),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER, 4),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, 5),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK, 6),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_START, 7),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB, 8),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB, 9),
+    # (vg.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE, 10),  # Does not exist on Linux
+    ]
+
+X360_TEST_HAT = [
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP, (0, 1)),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN, (0, -1)),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT, (-1, 0)),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT, (1, 0))
+    ]
+
+X360_TEST_TRIGGER_INT = [
+    (0, -1.0),
+    (5, -0.96),
+    (10, -0.92),
+    (63, -0.5),
+    (127, 0.0),
+    (191, 0.5),
+    (255, 1.0),
+    ]
+
+X360_TEST_TRIGGER_FLOAT = [
+    (0.0, -1.0),
+    (0.5, 0.0),
+    (1.0, 1.0),
+    ]
+
+X360_TEST_JOYSTICK_INT = [
+    ((-32768, 0), (-1.0, 0.0)),
+    ((-16384, 16383), (-0.5, -0.5)),
+    ((0, 32767), (0.0, -1.0)),
+    ((16383, -32768), (0.5, 1.0)),
+    ((32767, -16384), (1.0, 0.5)),
+    ] if SYSTEM == "Windows" else [
+    ((-32768, 0), (-1.0, 0.0)),
+    ((-16384, 16383), (-0.5, 0.5)),
+    ((0, 32767), (0.0, 1.0)),
+    ((16383, -32768), (0.5, -1.0)),
+    ((32767, -16384), (1.0, -0.5)),
+    ]
+
+X360_TEST_JOYSTICK_FLOAT = [
+    ((-1.0, 0.0), (-1.0, 0.0)),
+    ((-0.5, 0.5), (-0.5, -0.5)),
+    ((0.0, 1.0), (0.0, -1.0)),
+    ((0.5, -1.0), (0.5, 1.0)),
+    ((1.0, -0.5), (1.0, 0.5)),
+    ] if SYSTEM == "Windows" else [
+    ((-1.0, 0.0), (-1.0, 0.0)),
+    ((-0.5, 0.5), (-0.5, 0.5)),
+    ((0.0, 1.0), (0.0, 1.0)),
+    ((0.5, -1.0), (0.5, -1.0)),
+    ((1.0, -0.5), (1.0, -0.5)),
+    ]
+
 
 class TestVX360Gamepad(unittest.TestCase):
 
@@ -64,19 +134,7 @@ class TestVX360Gamepad(unittest.TestCase):
 
         # Check that buttons are correct:
 
-        tested_buttons = [
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_A, 0),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_B, 1),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_X, 2),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_Y, 3),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER, 4),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, 5),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK, 6),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_START, 7),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB, 8),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB, 9),
-            # (vg.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE, 10),  # Does not exist on Linux
-        ]
+        tested_buttons = X360_TEST_BUTTONS
 
         for v_button, j_button in tested_buttons:
             self.g.press_button(button=v_button)
@@ -97,12 +155,7 @@ class TestVX360Gamepad(unittest.TestCase):
 
         # Check that hat is correct:
 
-        tested_hat_buttons = [
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP, (0, 1)),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN, (0, -1)),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT, (-1, 0)),
-            (vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT, (1, 0))
-        ]
+        tested_hat_buttons = X360_TEST_HAT
 
         for v_hat_button, j_hat_button in tested_hat_buttons:
             self.g.press_button(button=v_hat_button)
@@ -119,15 +172,7 @@ class TestVX360Gamepad(unittest.TestCase):
 
         # Check that triggers are correct (absolute):
 
-        tested_values = [
-            (0, -1.0),
-            (5, -0.96),
-            (10, -0.92),
-            (63, -0.5),
-            (127, 0.0),
-            (191, 0.5),
-            (255, 1.0),
-        ]
+        tested_values = X360_TEST_TRIGGER_INT
 
         # Left trigger:
 
@@ -138,7 +183,7 @@ class TestVX360Gamepad(unittest.TestCase):
 
             _ = pygame.event.get()
             print(f"Testing: {v_value, j_value}")
-            self.assertAlmostEqual(j.get_axis(4), j_value, delta=0.01)
+            self.assertAlmostEqual(j.get_axis(LEFT_TRIGGER), j_value, delta=0.01)
 
             self.g.reset()
             self.g.update()
@@ -153,7 +198,7 @@ class TestVX360Gamepad(unittest.TestCase):
 
             _ = pygame.event.get()
             print(f"Testing: {v_value, j_value}")
-            self.assertAlmostEqual(j.get_axis(5), j_value, delta=0.01)
+            self.assertAlmostEqual(j.get_axis(RIGHT_TRIGGER), j_value, delta=0.01)
 
             self.g.reset()
             self.g.update()
@@ -161,11 +206,7 @@ class TestVX360Gamepad(unittest.TestCase):
 
         # Check that triggers are correct (float):
 
-        tested_values = [
-            (0.0, -1.0),
-            (0.5, 0.0),
-            (1.0, 1.0),
-        ]
+        tested_values = X360_TEST_TRIGGER_FLOAT
 
         # Left trigger:
 
@@ -176,7 +217,7 @@ class TestVX360Gamepad(unittest.TestCase):
 
             _ = pygame.event.get()
             print(f"Testing: {v_value, j_value}")
-            self.assertAlmostEqual(j.get_axis(4), j_value, delta=0.01)
+            self.assertAlmostEqual(j.get_axis(LEFT_TRIGGER), j_value, delta=0.01)
 
             self.g.reset()
             self.g.update()
@@ -191,7 +232,7 @@ class TestVX360Gamepad(unittest.TestCase):
 
             _ = pygame.event.get()
             print(f"Testing: {v_value, j_value}")
-            self.assertAlmostEqual(j.get_axis(5), j_value, delta=0.01)
+            self.assertAlmostEqual(j.get_axis(RIGHT_TRIGGER), j_value, delta=0.01)
 
             self.g.reset()
             self.g.update()
@@ -199,13 +240,7 @@ class TestVX360Gamepad(unittest.TestCase):
 
         # Check that joysticks are correct (absolute):
 
-        tested_values = [
-            ((-32768, 0), (-1.0, 0.0)),
-            ((-16384, 16383), (-0.5, -0.5)),
-            ((0, 32767), (0.0, -1.0)),
-            ((16383, -32768), (0.5, 1.0)),
-            ((32767, -16384), (1.0, 0.5)),
-        ]
+        tested_values = X360_TEST_JOYSTICK_INT
 
         # Left joystick:
 
@@ -216,8 +251,8 @@ class TestVX360Gamepad(unittest.TestCase):
 
             _ = pygame.event.get()
             print(f"Testing: {v_value, j_value}")
-            self.assertAlmostEqual(j.get_axis(0), j_value[0], delta=0.001)
-            self.assertAlmostEqual(j.get_axis(1), j_value[1], delta=0.001)
+            self.assertAlmostEqual(j.get_axis(LEFT_JOYSTICK[0]), j_value[0], delta=0.001)
+            self.assertAlmostEqual(j.get_axis(LEFT_JOYSTICK[1]), j_value[1], delta=0.001)
 
             self.g.reset()
             self.g.update()
@@ -232,8 +267,8 @@ class TestVX360Gamepad(unittest.TestCase):
 
             _ = pygame.event.get()
             print(f"Testing: {v_value, j_value}")
-            self.assertAlmostEqual(j.get_axis(2), j_value[0], delta=0.001)
-            self.assertAlmostEqual(j.get_axis(3), j_value[1], delta=0.001)
+            self.assertAlmostEqual(j.get_axis(RIGHT_JOYSTICK[0]), j_value[0], delta=0.001)
+            self.assertAlmostEqual(j.get_axis(RIGHT_JOYSTICK[1]), j_value[1], delta=0.001)
 
             self.g.reset()
             self.g.update()
@@ -241,13 +276,7 @@ class TestVX360Gamepad(unittest.TestCase):
 
         # Check that joysticks are correct (float):
 
-        tested_values = [
-            ((-1.0, 0.0), (-1.0, 0.0)),
-            ((-0.5, 0.5), (-0.5, -0.5)),
-            ((0.0, 1.0), (0.0, -1.0)),
-            ((0.5, -1.0), (0.5, 1.0)),
-            ((1.0, -0.5), (1.0, 0.5)),
-        ]
+        tested_values = X360_TEST_JOYSTICK_FLOAT
 
         # Left joystick:
 
@@ -258,8 +287,8 @@ class TestVX360Gamepad(unittest.TestCase):
 
             _ = pygame.event.get()
             print(f"Testing: {v_value, j_value}")
-            self.assertAlmostEqual(j.get_axis(0), j_value[0], delta=0.001)
-            self.assertAlmostEqual(j.get_axis(1), j_value[1], delta=0.001)
+            self.assertAlmostEqual(j.get_axis(LEFT_JOYSTICK[0]), j_value[0], delta=0.001)
+            self.assertAlmostEqual(j.get_axis(LEFT_JOYSTICK[1]), j_value[1], delta=0.001)
 
             self.g.reset()
             self.g.update()
@@ -274,8 +303,8 @@ class TestVX360Gamepad(unittest.TestCase):
 
             _ = pygame.event.get()
             print(f"Testing: {v_value, j_value}")
-            self.assertAlmostEqual(j.get_axis(2), j_value[0], delta=0.001)
-            self.assertAlmostEqual(j.get_axis(3), j_value[1], delta=0.001)
+            self.assertAlmostEqual(j.get_axis(RIGHT_JOYSTICK[0]), j_value[0], delta=0.001)
+            self.assertAlmostEqual(j.get_axis(RIGHT_JOYSTICK[1]), j_value[1], delta=0.001)
 
             self.g.reset()
             self.g.update()

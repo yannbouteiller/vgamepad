@@ -343,7 +343,6 @@ class VDS4Gamepad(VGamepad):
     def left_joystick(self, x_value, y_value):
         """
         Sets the values of the X and Y axis for the left joystick
-        Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
         :param: integer between 0 and 255 (128 = neutral position)
         """
@@ -353,7 +352,6 @@ class VDS4Gamepad(VGamepad):
     def right_joystick(self, x_value, y_value):
         """
         Sets the values of the X and Y axis for the right joystick
-        Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
         :param: integer between 0 and 255 (128 = neutral position)
         """
@@ -363,7 +361,6 @@ class VDS4Gamepad(VGamepad):
     def left_joystick_float(self, x_value_float, y_value_float):
         """
         Sets the values of the X and Y axis for the left joystick
-        Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
         :param: float between -1.0 and 1.0 (0 = neutral position)
         """
@@ -372,7 +369,6 @@ class VDS4Gamepad(VGamepad):
     def right_joystick_float(self, x_value_float, y_value_float):
         """
         Sets the values of the X and Y axis for the right joystick
-        Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
         :param: float between -1.0 and 1.0 (0 = neutral position)
         """
