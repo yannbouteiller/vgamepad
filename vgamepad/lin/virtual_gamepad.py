@@ -287,32 +287,44 @@ class VDS4Gamepad(VGamepad):
 
     def __init__(self):
         super().__init__()
-        self.device.name = 'DualShock 4 Controller'
+
+        self.DS4_BUTTON_TO_EV_KEY = {
+            vcom.DS4_BUTTONS.DS4_BUTTON_THUMB_RIGHT: libevdev.EV_KEY.BTN_THUMBR,
+            vcom.DS4_BUTTONS.DS4_BUTTON_THUMB_LEFT: libevdev.EV_KEY.BTN_THUMBL,
+            vcom.DS4_BUTTONS.DS4_BUTTON_OPTIONS: libevdev.EV_KEY.BTN_SELECT,
+            vcom.DS4_BUTTONS.DS4_BUTTON_SHARE: libevdev.EV_KEY.BTN_START,
+            vcom.DS4_BUTTONS.DS4_BUTTON_SHOULDER_RIGHT: libevdev.EV_KEY.BTN_TR,
+            vcom.DS4_BUTTONS.DS4_BUTTON_SHOULDER_LEFT: libevdev.EV_KEY.BTN_TL,
+            vcom.DS4_BUTTONS.DS4_BUTTON_TRIANGLE: libevdev.EV_KEY.BTN_NORTH,
+            vcom.DS4_BUTTONS.DS4_BUTTON_CIRCLE: libevdev.EV_KEY.BTN_EAST,
+            vcom.DS4_BUTTONS.DS4_BUTTON_CROSS: libevdev.EV_KEY.BTN_SOUTH,
+            vcom.DS4_BUTTONS.DS4_BUTTON_SQUARE: libevdev.EV_KEY.BTN_WEST
+        }
+
+        self.device.name = 'Sony Interactive Entertainment Wireless Controller'
+
         # Enable buttons
         self.device.enable(libevdev.EV_KEY.BTN_SOUTH)
         self.device.enable(libevdev.EV_KEY.BTN_EAST)
         self.device.enable(libevdev.EV_KEY.BTN_NORTH)
         self.device.enable(libevdev.EV_KEY.BTN_WEST)
-
         self.device.enable(libevdev.EV_KEY.BTN_TL)
         self.device.enable(libevdev.EV_KEY.BTN_TR)
-
         self.device.enable(libevdev.EV_KEY.BTN_TL2)
         self.device.enable(libevdev.EV_KEY.BTN_TR2)
-
         self.device.enable(libevdev.EV_KEY.BTN_SELECT)
         self.device.enable(libevdev.EV_KEY.BTN_START)
-
         self.device.enable(libevdev.EV_KEY.BTN_MODE)
-
         self.device.enable(libevdev.EV_KEY.BTN_THUMBL)
         self.device.enable(libevdev.EV_KEY.BTN_THUMBR)
 
-        # Enable joysticks
+        # Enable axes
         self.device.enable(libevdev.EV_ABS.ABS_X, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
         self.device.enable(libevdev.EV_ABS.ABS_Y, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
         self.device.enable(libevdev.EV_ABS.ABS_RX, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
         self.device.enable(libevdev.EV_ABS.ABS_RY, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
+        self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1, value=0))
+        self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1, value=0))
 
         # Enable triggers
         self.device.enable(libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=255))
@@ -322,19 +334,6 @@ class VDS4Gamepad(VGamepad):
 
         self.report = self.get_default_report()
         self.update()
-
-    DS4_BUTTON_TO_EV_KEY = {
-        vcom.DS4_BUTTONS.DS4_BUTTON_THUMB_RIGHT: libevdev.EV_KEY.BTN_THUMBR,
-        vcom.DS4_BUTTONS.DS4_BUTTON_THUMB_LEFT: libevdev.EV_KEY.BTN_THUMBL,
-        vcom.DS4_BUTTONS.DS4_BUTTON_OPTIONS: libevdev.EV_KEY.BTN_SELECT,
-        vcom.DS4_BUTTONS.DS4_BUTTON_SHARE: libevdev.EV_KEY.BTN_START,
-        vcom.DS4_BUTTONS.DS4_BUTTON_SHOULDER_RIGHT: libevdev.EV_KEY.BTN_TR,
-        vcom.DS4_BUTTONS.DS4_BUTTON_SHOULDER_LEFT: libevdev.EV_KEY.BTN_TL,
-        vcom.DS4_BUTTONS.DS4_BUTTON_TRIANGLE: libevdev.EV_KEY.BTN_NORTH,
-        vcom.DS4_BUTTONS.DS4_BUTTON_CIRCLE: libevdev.EV_KEY.BTN_EAST,
-        vcom.DS4_BUTTONS.DS4_BUTTON_CROSS: libevdev.EV_KEY.BTN_SOUTH,
-        vcom.DS4_BUTTONS.DS4_BUTTON_SQUARE: libevdev.EV_KEY.BTN_WEST
-    }
 
     def get_default_report(self):
         rep = vcom.DS4_REPORT(
