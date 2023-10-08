@@ -284,7 +284,7 @@ gamepad.right_joystick_float(x_value_float=-1.0, y_value_float=0.8)  # values be
 gamepad.update()
 ```
 
-* **Note:** Since version `0.1.0`, the Y axis on joysticks is inverted compared to the X360 API (native VIGEm behavior).
+* **Note:** Since version `0.1.0`, the DS4 Y axis on joysticks is inverted compared to the X360 API (native VIGEm behavior).
 
 Directional pad (hat):
 ```python

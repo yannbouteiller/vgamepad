@@ -347,7 +347,7 @@ class VDS4Gamepad(VGamepad):
         :param: integer between 0 and 255 (128 = neutral position)
         """
         self.report.bThumbLX = x_value
-        self.report.bThumbLY = - y_value
+        self.report.bThumbLY = y_value
 
     def right_joystick(self, x_value, y_value):
         """
@@ -356,7 +356,7 @@ class VDS4Gamepad(VGamepad):
         :param: integer between 0 and 255 (128 = neutral position)
         """
         self.report.bThumbRX = x_value
-        self.report.bThumbRY = - y_value
+        self.report.bThumbRY = y_value
 
     def left_joystick_float(self, x_value_float, y_value_float):
         """

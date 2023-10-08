@@ -301,7 +301,7 @@ class VDS4Gamepad(VGamepad):
             vcom.DS4_BUTTONS.DS4_BUTTON_SQUARE: libevdev.EV_KEY.BTN_WEST
         }
 
-        self.device.name = 'Sony Interactive Entertainment Wireless Controller'
+        self.device.name = 'PS4 Controller'
 
         # Enable buttons
         self.device.enable(libevdev.EV_KEY.BTN_SOUTH)
@@ -425,27 +425,24 @@ class VDS4Gamepad(VGamepad):
     def left_joystick(self, x_value, y_value):
         """
         Sets the values of the X and Y axis for the left joystick
-        Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
         :param: integer between 0 and 255 (128 = neutral position)
         """
         self.report.bThumbLX = x_value
-        self.report.bThumbLY = -y_value
+        self.report.bThumbLY = y_value
 
     def right_joystick(self, x_value, y_value):
         """
         Sets the values of the X and Y axis for the right joystick
-        Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
         :param: integer between 0 and 255 (128 = neutral position)
         """
         self.report.bThumbRX = x_value
-        self.report.bThumbRY = -y_value
+        self.report.bThumbRY = y_value
 
     def left_joystick_float(self, x_value_float, y_value_float):
         """
         Sets the values of the X and Y axis for the left joystick
-        Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
         :param: float between -1.0 and 1.0 (0 = neutral position)
         """
@@ -455,7 +452,6 @@ class VDS4Gamepad(VGamepad):
     def right_joystick_float(self, x_value_float, y_value_float):
         """
         Sets the values of the X and Y axis for the right joystick
-        Note: compared to the API, the Y axis are multiplied by -1 for consistency with X360
 
         :param: float between -1.0 and 1.0 (0 = neutral position)
         """
