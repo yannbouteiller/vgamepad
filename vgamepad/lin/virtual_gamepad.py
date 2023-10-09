@@ -288,6 +288,20 @@ class VDS4Gamepad(VGamepad):
     def __init__(self):
         super().__init__()
 
+        self.dpad_direction = vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
+
+        self.dpad_mapping = {
+            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE: (0, 0),
+            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST: (1, 0),
+            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTHEAST: (1, 1),
+            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTH: (0, 1),
+            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTHWEST: (-1, 1),
+            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST: (-1, 0),
+            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST: (-1, -1),
+            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH: (0, -1),
+            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHEAST: (1, -1)
+        }
+
         self.DS4_BUTTON_TO_EV_KEY = {
             vcom.DS4_BUTTONS.DS4_BUTTON_THUMB_RIGHT: libevdev.EV_KEY.BTN_THUMBR,
             vcom.DS4_BUTTONS.DS4_BUTTON_THUMB_LEFT: libevdev.EV_KEY.BTN_THUMBL,
@@ -298,10 +312,20 @@ class VDS4Gamepad(VGamepad):
             vcom.DS4_BUTTONS.DS4_BUTTON_TRIANGLE: libevdev.EV_KEY.BTN_NORTH,
             vcom.DS4_BUTTONS.DS4_BUTTON_CIRCLE: libevdev.EV_KEY.BTN_EAST,
             vcom.DS4_BUTTONS.DS4_BUTTON_CROSS: libevdev.EV_KEY.BTN_SOUTH,
-            vcom.DS4_BUTTONS.DS4_BUTTON_SQUARE: libevdev.EV_KEY.BTN_WEST
+            vcom.DS4_BUTTONS.DS4_BUTTON_SQUARE: libevdev.EV_KEY.BTN_WEST,
         }
 
-        self.device.name = 'PS4 Controller'
+        self.DS4_SPECIAL_BUTTON_TO_EV_KEY = {
+            vcom.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_PS: libevdev.EV_KEY.BTN_MODE,
+        }
+
+        # Note: physical DS4 controllers create 3 evdev files on Linux:
+        # 1: Sony Interactive Entertainment Wireless Controller
+        # 2: Sony Interactive Entertainment Wireless Controller Motion Sensors
+        # 3: Sony Interactive Entertainment Wireless Controller Touchpad
+        # TODO: emulate the motion sensors and touchpad on Linux
+
+        self.device.name = 'Sony Interactive Entertainment Wireless Controller'  # 'PS4 Controller'
 
         # Enable buttons
         self.device.enable(libevdev.EV_KEY.BTN_SOUTH)
@@ -466,6 +490,7 @@ class VDS4Gamepad(VGamepad):
         :param: a DS4_DPAD_DIRECTIONS field, e.g. DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST
         """
         vcom.DS4_SET_DPAD(self.report, direction)
+        self.dpad_direction = direction
 
     def update(self):
         """
@@ -474,6 +499,11 @@ class VDS4Gamepad(VGamepad):
         for btn, key in self.DS4_BUTTON_TO_EV_KEY.items():
             self.uinput.send_events([
                 libevdev.InputEvent(key, value=(int(bool(self.report.wButtons & btn)))),
+            ])
+
+        for btn, key in self.DS4_SPECIAL_BUTTON_TO_EV_KEY.items():
+            self.uinput.send_events([
+                libevdev.InputEvent(key, value=(int(bool(self.report.bSpecial & btn)))),
             ])
 
         # Update axes
@@ -488,14 +518,9 @@ class VDS4Gamepad(VGamepad):
             libevdev.InputEvent(libevdev.EV_ABS.ABS_Z, value=self.report.bTriggerL),
             libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ, value=self.report.bTriggerR)
         ])
-        hat0x_value = bool(self.report.wButtons
-                           & vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST) - bool(
-                               self.report.wButtons
-                               & vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST)
-        hat0y_value = bool(self.report.wButtons
-                           & vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTH) - bool(
-                               self.report.wButtons
-                               & vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH)
+
+        hat0x_value, hat0y_value = self.dpad_mapping[self.dpad_direction]
+
         self.uinput.send_events([
             libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0X, value=hat0x_value),
             libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat0y_value)

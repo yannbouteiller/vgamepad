@@ -1,19 +1,24 @@
 # Virtual Gamepad
-Virtual XBox360 and DualShock4 gamepads in python
+Virtual XBox360 and DualShock4 gamepads in python.
 
 ---
 
 Virtual Gamepad (```vgamepad```) is a small python library that emulates XBox360 and DualShock4 gamepads on your system.
 It enables controlling e.g. a video-game that requires analog input, directly from your python script.
 
-On Windows, ```vgamepad``` uses the [ViGEm](https://github.com/ViGEm) C++ framework, for which it essentially provides python bindings and a user-friendly interface.
+On Windows ```vgamepad``` uses the [ViGEm](https://github.com/ViGEm) C++ framework, for which it essentially provides python bindings and a user-friendly interface.
 
-On Linux, ```vgamepad``` uses `libevdev`.
+---
+
+__Status:__
+
+|     Windows     |                      Linux                       |
+|:---------------:|:------------------------------------------------:|
+| *Full support.* | *Alpha,*<br/>see [Linux notes](readme/linux.md). |
+
 
 ## Quick links
 - [Installation](#installation)
-  - [Windows](#windows)
-  - [Linux](#linux)
 - [Getting started](#getting-started)
   - [XBox360 gamepad](#xbox360-gamepad)
   - [DualShock4 gamepad](#dualshock4-gamepad)
@@ -37,33 +42,7 @@ Accept the licence agreement, click ```Install```, allow the installer to modify
 
 ### Linux:
 
-#### Prerequisite
-
-On Linux, `vgamepad` needs access to `uinput`.
-
-To give yourself permission to access `uinput` for the current session, open a terminal and execute:
-```bash
-sudo chmod +0666 /dev/uinput
-```
-
-Create a `udev` rule to set the permission permanently (otherwise the permission will be removed next time you log in):
-```bash
-sudo nano /etc/udev/rules.d/50-uinput.rules 
-```
-In `nano`, paste the following line:
-```bash
-KERNEL=="uinput", TAG+="uaccess"
-```
-Save by pressing `CTRL+o`, `ENTER`, and exit `nano` by pressing `CTRL+x`
-
-#### vgamepad installation
-
-Run:
-```bash
-pip install vgamepad
-```
-
-```vgamepad``` is now installed in your active python environment.
+See [Linux notes](readme/linux.md).
 
 ---
 
@@ -261,7 +240,7 @@ class DS4_SPECIAL_BUTTONS(IntFlag):
     DualShock 4 special buttons
     """
     DS4_SPECIAL_BUTTON_PS = 1 << 0
-    DS4_SPECIAL_BUTTON_TOUCHPAD = 1 << 1
+    DS4_SPECIAL_BUTTON_TOUCHPAD = 1 << 1  # Windows only, no effect on Linux
 ```
 
 Triggers and joysticks (integer values):

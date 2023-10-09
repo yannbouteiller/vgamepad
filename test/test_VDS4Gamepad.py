@@ -17,11 +17,15 @@ import pygame
 WAIT_S = 0.1
 SYSTEM = platform.system()
 
+DS4_NAME = "PS4 Controller" if SYSTEM == "Windows" else "Sony Interactive Entertainment Wireless Controller"
+DS4_NB_BUTTONS = 16 if SYSTEM == "Windows" else 13
+DS4_NB_HATS = 0 if SYSTEM == "Windows" else 1
+
 DS4_LEFT_TRIGGER = 4 if SYSTEM == "Windows" else 2
 DS4_RIGHT_TRIGGER = 5
 DS4_LEFT_JOYSTICK = (0, 1)
 DS4_RIGHT_JOYSTICK = (2, 3) if SYSTEM == "Windows" else (3, 4)
-DS4_DIRECTIONAL_PAD = (11, 12, 13, 14)
+DS4_DIRECTIONAL_PAD = (11, 12, 13, 14) if SYSTEM == "Windows" else None
 
 DS4_TEST_BUTTONS = [
     (vg.DS4_BUTTONS.DS4_BUTTON_CROSS, 0),
@@ -34,16 +38,28 @@ DS4_TEST_BUTTONS = [
     (vg.DS4_BUTTONS.DS4_BUTTON_THUMB_RIGHT, 8),
     (vg.DS4_BUTTONS.DS4_BUTTON_SHOULDER_LEFT, 9),
     (vg.DS4_BUTTONS.DS4_BUTTON_SHOULDER_RIGHT, 10),
-    # (vg.DS4_BUTTONS.DS4_BUTTON_TRIGGER_LEFT, -1),
-    # (vg.DS4_BUTTONS.DS4_BUTTON_TRIGGER_RIGHT, -1),
+    ] if SYSTEM == "Windows" else [
+    (vg.DS4_BUTTONS.DS4_BUTTON_CROSS, 0),
+    (vg.DS4_BUTTONS.DS4_BUTTON_CIRCLE, 1),
+    (vg.DS4_BUTTONS.DS4_BUTTON_SQUARE, 3),
+    (vg.DS4_BUTTONS.DS4_BUTTON_TRIANGLE, 2),
+    (vg.DS4_BUTTONS.DS4_BUTTON_SHARE, 9),
+    (vg.DS4_BUTTONS.DS4_BUTTON_OPTIONS, 8),
+    (vg.DS4_BUTTONS.DS4_BUTTON_THUMB_LEFT, 11),
+    (vg.DS4_BUTTONS.DS4_BUTTON_THUMB_RIGHT, 12),
+    (vg.DS4_BUTTONS.DS4_BUTTON_SHOULDER_LEFT, 4),
+    (vg.DS4_BUTTONS.DS4_BUTTON_SHOULDER_RIGHT, 5),
     ]
 
 DS4_TEST_SPECIAL_BUTTONS = [
     (vg.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_PS, 5),
     (vg.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD, 15),
+    ] if SYSTEM == "Windows" else [
+    (vg.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_PS, 10),
+    # (vg.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD, 15),  # not implemented on Linux
     ]
 
-DS4_TEST_DIRECTIONAL_PAD = [
+DS4_TEST_DIRECTIONAL_PAD = [  # On Windows, pygame detects the directional pad as 4 buttons
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE, (0, 0, 0, 0)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST, (1, 0, 1, 0)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST, (0, 0, 1, 0)),
@@ -53,6 +69,16 @@ DS4_TEST_DIRECTIONAL_PAD = [
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST, (0, 0, 0, 1)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHEAST, (1, 0, 0, 1)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH, (1, 0, 0, 0)),
+    ] if SYSTEM == "Windows" else [  # FIXME: On Linux, pygame detects the directional pad as a hat with 2 axes
+    (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE, (0, 0)),
+    (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST, (-1, 1)),
+    (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST, (-1, 0)),
+    (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTHWEST, (-1, -1)),
+    (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTH, (0, -1)),
+    (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTHEAST, (1, -1)),
+    (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST, (1, 0)),
+    (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHEAST, (1, 1)),
+    (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH, (0, 1)),
     ]
 
 DS4_TEST_TRIGGER_INT = [
@@ -129,11 +155,11 @@ class TestVDS4Gamepad(unittest.TestCase):
         nb_balls = j.get_numballs()
         nb_buttons = j.get_numbuttons()
         nb_hats = j.get_numhats()
-        self.assertTrue(name == "PS4 Controller")
+        self.assertTrue(name == DS4_NAME)
         self.assertEqual(nb_axes, 6)
         self.assertEqual(nb_balls, 0)
-        self.assertEqual(nb_buttons, 16)
-        self.assertEqual(nb_hats, 0)
+        self.assertEqual(nb_buttons, DS4_NB_BUTTONS)
+        self.assertEqual(nb_hats, DS4_NB_HATS)
 
         # Check that buttons are correct:
 
@@ -191,10 +217,14 @@ class TestVDS4Gamepad(unittest.TestCase):
             _ = pygame.event.get()
 
             print(f"Testing: {v_value, j_value}")
-            self.assertEqual(j.get_button(DS4_DIRECTIONAL_PAD[0]), j_value[0])
-            self.assertEqual(j.get_button(DS4_DIRECTIONAL_PAD[1]), j_value[1])
-            self.assertEqual(j.get_button(DS4_DIRECTIONAL_PAD[2]), j_value[2])
-            self.assertEqual(j.get_button(DS4_DIRECTIONAL_PAD[3]), j_value[3])
+
+            if SYSTEM == "Windows":
+                self.assertEqual(j.get_button(DS4_DIRECTIONAL_PAD[0]), j_value[0])
+                self.assertEqual(j.get_button(DS4_DIRECTIONAL_PAD[1]), j_value[1])
+                self.assertEqual(j.get_button(DS4_DIRECTIONAL_PAD[2]), j_value[2])
+                self.assertEqual(j.get_button(DS4_DIRECTIONAL_PAD[3]), j_value[3])
+            else:
+                self.assertEqual(j.get_hat(0), j_value)
 
             self.g.reset()
             self.g.update()
