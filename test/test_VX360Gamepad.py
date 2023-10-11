@@ -11,6 +11,8 @@ import vgamepad as vg
 # pygame must be installed to run these tests.
 # Furthermore, these tests can only run with a display (pygame requirement).
 
+# FIXME: The MODE (GUIDE) button is currently disabled on Linux.
+
 import pygame
 
 

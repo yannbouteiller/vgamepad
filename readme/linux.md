@@ -12,7 +12,7 @@ As such, it emulates true physical DS4 and X360 gamepads.
 On Linux, `vgamepad` currently relies on `libevdev`.
 It emulates a subset of the X360 and DS4 capabilities in `evdev` by managing a virtual `uinput` device.
 
-While we are trying to make this emulation close to the real thing, we are not quite there yet.
+While we are trying to make this emulation as close to the real thing as possible, we are not quite there yet.
 If you know how to advance toward this goal, your contribution would be **very appreciated** :heart_eyes:
 
 For now, most basic `vgamepad` calls work on Linux, but you shouldn't expect your app to react exactly as if an actual X360 / DS4 gamepad were connected to your machine.
@@ -20,9 +20,11 @@ However, the corresponding `evdev` event should be similar.
 
 **What you should know:**
 - Detected buttons, ordering and axes directions are typically different from Windows (depending on your app)
-- Force feedback / LEDS are not implemented on Linux yet
+- Force feedback / LEDs are not implemented on Linux yet
+- X360 "Mode" ("Guide") button is not implemented on Linux yet
 - DS4 touchpad / motion sensor are not implemented on Linux yet (no extended report)
 - Real DS4s fire a button event when you press the triggers (on top of the axis event), this button event is not implemented in `vgamepad` at the moment
+- Scripts in the `test` folder are useful for understanding the current status of Linux support (read the comments)
 
 ## Installation
 

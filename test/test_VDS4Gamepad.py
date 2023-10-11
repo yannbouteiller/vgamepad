@@ -11,6 +11,19 @@ import vgamepad as vg
 # pygame must be installed to run these tests.
 # Furthermore, these tests can only run with a display (pygame requirement).
 
+# FIXME: With real DS4 controllers, pygame has a consistent mapping across platforms.
+# Ideally, the same should happen for vgamepad controllers, which pygame should detect as real DS4s on Linux.
+# However, because we prefer evdev fidelity over pygame's, so we do not artificially reorder buttons.
+# We do not artificially set the uinput device name to "PS4 Controller" either.
+# This is because evdev detects real DS4s as "Sony Interactive Entertainment Wireless Controller".
+
+# FIXME: On Linux, pygame detects the directional pad as a hat with 2 axes.
+# We are preferring evdev fidelity over pygame's.
+# This is why we do not define the hat as "DPAD" buttons.
+# Indeed, evdev sees the capabilities of real DS4s as hat.
+# Nevertheless, pygame does detect the hat as 4 buttons on Linux for real DS4s.
+# The same should happen for vgamepad.
+
 import pygame
 
 
@@ -59,7 +72,7 @@ DS4_TEST_SPECIAL_BUTTONS = [
     # (vg.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD, 15),  # not implemented on Linux
     ]
 
-DS4_TEST_DIRECTIONAL_PAD = [  # On Windows, pygame detects the directional pad as 4 buttons
+DS4_TEST_DIRECTIONAL_PAD = [
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE, (0, 0, 0, 0)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST, (1, 0, 1, 0)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST, (0, 0, 1, 0)),
@@ -69,7 +82,7 @@ DS4_TEST_DIRECTIONAL_PAD = [  # On Windows, pygame detects the directional pad a
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST, (0, 0, 0, 1)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHEAST, (1, 0, 0, 1)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH, (1, 0, 0, 0)),
-    ] if SYSTEM == "Windows" else [  # FIXME: On Linux, pygame detects the directional pad as a hat with 2 axes
+    ] if SYSTEM == "Windows" else [
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE, (0, 0)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST, (-1, 1)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST, (-1, 0)),
