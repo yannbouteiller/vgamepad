@@ -1,12 +1,21 @@
 # Virtual Gamepad
-Virtual XBox360 and DualShock4 gamepads in python
+Virtual XBox360 and DualShock4 gamepads in python.
 
 ---
 
 Virtual Gamepad (```vgamepad```) is a small python library that emulates XBox360 and DualShock4 gamepads on your system.
 It enables controlling e.g. a video-game that requires analog input, directly from your python script.
 
-Under the hood, ```vgamepad``` uses the [ViGEm](https://github.com/ViGEm) C++ framework on Windows, for which it essentially provides python bindings and a user-friendly interface. On Linux, we use `libevdev` directly instead.
+On Windows ```vgamepad``` uses the [ViGEm](https://github.com/ViGEm) C++ framework, for which it essentially provides python bindings and a user-friendly interface.
+
+---
+
+__Status:__
+
+|     Windows     |                      Linux                       |
+|:---------------:|:------------------------------------------------:|
+| *Full support.* | *Alpha,*<br/>see [Linux notes](readme/linux.md). |
+
 
 ## Quick links
 - [Installation](#installation)
@@ -19,14 +28,21 @@ Under the hood, ```vgamepad``` uses the [ViGEm](https://github.com/ViGEm) C++ fr
 ---
 
 ## Installation
+
+### Windows:
 Open your favorite terminal (e.g. anaconda prompt) and run:
 ```bash
 pip install vgamepad
 ```
-This automatically runs the installer of the ViGEmBus driver on Windows.
+
+This automatically runs the installer of the ViGEmBus driver.
 Accept the licence agreement, click ```Install```, allow the installer to modify you PC, wait for completion and click ```Finish```.
 
 ```vgamepad``` is now installed in your active python environment.
+
+### Linux:
+
+See [Linux notes](readme/linux.md).
 
 ---
 
@@ -224,7 +240,7 @@ class DS4_SPECIAL_BUTTONS(IntFlag):
     DualShock 4 special buttons
     """
     DS4_SPECIAL_BUTTON_PS = 1 << 0
-    DS4_SPECIAL_BUTTON_TOUCHPAD = 1 << 1
+    DS4_SPECIAL_BUTTON_TOUCHPAD = 1 << 1  # Windows only, no effect on Linux
 ```
 
 Triggers and joysticks (integer values):
@@ -247,7 +263,7 @@ gamepad.right_joystick_float(x_value_float=-1.0, y_value_float=0.8)  # values be
 gamepad.update()
 ```
 
-* **Note:** The Y axis on joysticks is inverted for consistency with the X360 API.
+* **Note:** Since version `0.1.0`, the DS4 Y axis on joysticks is inverted compared to the X360 API (native VIGEm behavior).
 
 Directional pad (hat):
 ```python
@@ -330,9 +346,9 @@ time.sleep(1.0)
 
 ### Rumble and LEDs:
 
-`vgamepad` enables registering custom callback functions to handle updates of the rumble motors, and of the LED ring.
+_**Note**: Rumble and LEDs are supported on Windows only (not yet ported to Linux)._
 
-**Note**: The callback functionality has not yet been ported to Linux.
+`vgamepad` enables registering custom callback functions to handle updates of the rumble motors, and of the LED ring.
 
 Custom callback functions require 6 parameters:
 ```python
