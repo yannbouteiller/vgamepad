@@ -51,6 +51,30 @@ class XUSB_REPORT(Structure):
                 ("sThumbRX", c_short),
                 ("sThumbRY", c_short)]
 
+    # The defenition of the `__init__` allows the contructor to be typed
+    def __init__(
+        self,
+        wButtons: int,
+        bLeftTrigger: int, bRightTrigger: int,
+        sThumbLX: int, sThumbLY: int, sThumbRX: int, sThumbRY: int,
+    ) -> None:
+        super().__init__(
+            wButtons=wButtons,
+            bLeftTrigger=bLeftTrigger, bRightTrigger=bRightTrigger,
+            sThumbLX=sThumbLX, sThumbLY=sThumbLY, sThumbRX=sThumbRX, sThumbRY=sThumbRY
+        )
+
+    # This will allow the fields to be typed.
+    # Also, even tho they might be `c_ushort` or other types,
+    # they will end up being `int`
+    wButtons: int
+    bLeftTrigger: int
+    bRightTrigger: int
+    sThumbLX: int
+    sThumbLY: int
+    sThumbRX: int
+    sThumbRY: int
+
 
 class DS4_LIGHTBAR_COLOR(Structure):
     """
@@ -59,6 +83,13 @@ class DS4_LIGHTBAR_COLOR(Structure):
     _fields_ = [("Red", c_ubyte),  # Red part of the Lightbar (0-255).
                 ("Green", c_ubyte),  # Green part of the Lightbar (0-255).
                 ("Blue", c_ubyte)]  # Blue part of the Lightbar (0-255).
+
+    def __init__(self, Red: int, Green: int, Blue: int) -> None:
+        super().__init__(Red=Red, Green=Green, Blue=Blue)
+    
+    Red: int
+    Green: int
+    Blue: int
 
 
 class DS4_BUTTONS(IntFlag):
@@ -114,14 +145,44 @@ class DS4_REPORT(Structure):
                 ("bSpecial", c_byte),
                 ("bTriggerL", c_byte),
                 ("bTriggerR", c_byte)]
+    
+    def __init__(
+            self,
+            bThumbLX: int,
+            bThumbLY: int,
+            bThumbRX: int,
+            bThumbRY: int,
+            wButtons: int,
+            bSpecial: int,
+            bTriggerL: int,
+            bTriggerR: int,
+        ) -> None:
+        super().__init__(
+            bThumbLX=bThumbLX, bThumbLY=bThumbLY,
+            bThumbRX=bThumbRX, bThumbRY=bThumbRY,
+            wButtons=wButtons,
+            bSpecial=bSpecial,
+            bTriggerL=bTriggerL, bTriggerR=bTriggerR,
+        )
+    
+    bThumbLX: int
+    bThumbLY: int
+    bThumbRX: int
+    bThumbRY: int
+    wButtons: int
+    bSpecial: int
+    bTriggerL: int
+    bTriggerR: int
 
 
-def DS4_SET_DPAD(report, dpad):
+def DS4_SET_DPAD(report: DS4_REPORT, dpad: DS4_DPAD_DIRECTIONS) -> None:
     report.wButtons &= ~0xF
     report.wButtons |= dpad  # TODO cast USHORT?
+    # BunnyMerz: You don't need to cast it, since wButtons is an `int` to python,
+    # but it still may overflow, since it is bound to a c's ushort.
 
 
-def DS4_REPORT_INIT(report):
+def DS4_REPORT_INIT(report: DS4_REPORT) -> None:
     report.bThumbLX = 0x80
     report.bThumbLY = 0x80
     report.bThumbRX = 0x80
@@ -140,6 +201,28 @@ class DS4_TOUCH(Structure):
                 # middle byte holds last 4 bits of X and the starting
                 ("bIsUpTrackingNum2", c_byte),  # second touch data immediately follows data of first
                 ("bTouchData2", c_ushort * 3)]  # resolution is 1920x943
+    
+    def __init__(
+            self,
+            bPacketCounter: int,
+            bIsUpTrackingNum1: int,
+            bTouchData1: int,
+            bIsUpTrackingNum2: int,
+            bTouchData2: int,
+        ) -> None:
+        super().__init__(
+            bPacketCounter=bPacketCounter,
+            bIsUpTrackingNum1=bIsUpTrackingNum1,
+            bTouchData1=bTouchData1,
+            bIsUpTrackingNum2=bIsUpTrackingNum2,
+            bTouchData2=bTouchData2,
+        )
+
+    bPacketCounter: int
+    bIsUpTrackingNum1: int
+    bTouchData1: int
+    bIsUpTrackingNum2: int
+    bTouchData2: int
 
 
 class DS4_SUB_REPORT_EX(Structure):
@@ -161,7 +244,7 @@ class DS4_SUB_REPORT_EX(Structure):
                 ("wAccelZ", c_short),
                 ("_bUnknown1", c_byte * 5),
                 ("bBatteryLvlSpecial", c_byte),
-                # really should have a enum to show everything that this can represent (USB charging, battery level; EXT, headset, microphone connected)
+                # TODO: really should have a enum to show everything that this can represent (USB charging, battery level; EXT, headset, microphone connected)
                 ("_bUnknown2", c_byte * 2),
                 ("bTouchPacketsN", c_byte),  # 0x00 to 0x03 (USB max)
                 ("sCurrentTouch", DS4_TOUCH),
