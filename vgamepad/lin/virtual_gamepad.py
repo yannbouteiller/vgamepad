@@ -212,7 +212,8 @@ class VX360Gamepad(VGamepad):
         :param: integer between -32768 and 32767 (0 = neutral position)
         """
         self.report.sThumbLX = x_value
-        self.report.sThumbLY = y_value
+        # Y axis is inverted, align with Windows
+        self.report.sThumbLY = -y_value
 
     def right_joystick(self, x_value, y_value):
         """
@@ -221,7 +222,8 @@ class VX360Gamepad(VGamepad):
         :param: integer between -32768 and 32767 (0 = neutral position)
         """
         self.report.sThumbRX = x_value
-        self.report.sThumbRY = y_value
+        # Y axis is inverted, align with Windows
+        self.report.sThumbRY = -y_value
 
     def left_joystick_float(self, x_value_float, y_value_float):
         """
