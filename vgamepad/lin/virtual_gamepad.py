@@ -104,10 +104,10 @@ class VX360Gamepad(VGamepad):
         )
         # Enable triggers
         self.device.enable(
-            libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=1023)
+            libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=255)
         )
         self.device.enable(
-            libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=1023)
+            libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=255)
         )
 
         # Enable D-Pad
@@ -266,10 +266,10 @@ class VX360Gamepad(VGamepad):
                 libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=self.report.sThumbRY),
                 # Triggers
                 libevdev.InputEvent(
-                    libevdev.EV_ABS.ABS_Z, value=self.report.bLeftTrigger * 4
+                    libevdev.EV_ABS.ABS_Z, value=self.report.bLeftTrigger
                 ),
                 libevdev.InputEvent(
-                    libevdev.EV_ABS.ABS_RZ, value=self.report.bRightTrigger * 4
+                    libevdev.EV_ABS.ABS_RZ, value=self.report.bRightTrigger
                 ),
             ]
         )
