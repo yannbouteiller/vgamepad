@@ -85,7 +85,7 @@ class VGamepad(ABC):
         """
         :param: the new product ID of the virtual device
         """
-        vcli.vigem_target_get_pid(self._devicep, pid)
+        vcli.vigem_target_set_pid(self._devicep, pid)
 
     def get_index(self):
         """
