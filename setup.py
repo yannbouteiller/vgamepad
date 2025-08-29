@@ -61,7 +61,7 @@ with open("README.md", "r") as fh:
 setup(
     name='vgamepad',
     packages=[package for package in find_packages()],
-    version='0.1.1',
+    version='0.1.2',
     license='MIT',
     description='Virtual XBox360 and DualShock4 gamepads in python',
     long_description=long_description,

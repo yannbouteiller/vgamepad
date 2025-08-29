@@ -10,7 +10,6 @@ import vgamepad.win.vigem_commons as vcom
 
 
 class VGamepad(ABC):
-
     def __init__(self):
         self.device = libevdev.Device()
         self.device.name = "Virtual Gamepad"
@@ -118,10 +117,16 @@ class VX360Gamepad(VGamepad):
             libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1)
         )
 
-        self.uinput = self.device.create_uinput_device()
+        # Open /dev/uinput yourself so you fully control the virtual device lifetime.
+        # IMPORTANT: writing permission on /dev/uinput is required (root or proper udev rules).
+        self._uifp = open("/dev/uinput", "r+b", buffering=0)  # BinaryIO file object
+        # Create the uinput device using the managed file object.
+        # Passing uinput_fd ensures the kernel device is tied to this fd.
+        self.uinput = self.device.create_uinput_device(uinput_fd=self._uifp)
 
         self.report = self.get_default_report()
         self.update()
+        self._closed = False
 
     XUSB_BUTTON_TO_EV_KEY = {
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_START: libevdev.EV_KEY.BTN_START,
@@ -294,6 +299,28 @@ class VX360Gamepad(VGamepad):
     def target_alloc(self):
         return self.uinput
 
+    def close(self):
+        """Tear down the virtual gamepad deterministically."""
+        if self._closed:
+            return
+        try:
+            # Drop the Python-side reference first so libevdev can free its resources.
+            self.uinput = None
+        finally:
+            # Closing the /dev/uinput fd destroys the kernel uinput device.
+            if getattr(self, "_uifp", None):
+                self._uifp.close()
+                self._uifp = None
+            self._closed = True
+
+    def __del__(self):
+        """Best-effort cleanup if the caller forgot to call close()."""
+        try:
+            self.close()
+        except Exception:
+            # Avoid raising from GC
+            pass
+
 
 class VDS4Gamepad(VGamepad):
     """
@@ -393,10 +420,16 @@ class VDS4Gamepad(VGamepad):
             libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=255)
         )
 
-        self.uinput = self.device.create_uinput_device()
+        # Open /dev/uinput yourself so you fully control the virtual device lifetime.
+        # IMPORTANT: writing permission on /dev/uinput is required (root or proper udev rules).
+        self._uifp = open("/dev/uinput", "r+b", buffering=0)  # BinaryIO file object
+        # Create the uinput device using the managed file object.
+        # Passing uinput_fd ensures the kernel device is tied to this fd.
+        self.uinput = self.device.create_uinput_device(uinput_fd=self._uifp)
 
         self.report = self.get_default_report()
         self.update()
+        self._closed = False
 
     def get_default_report(self):
         rep = vcom.DS4_REPORT(
@@ -588,3 +621,25 @@ class VDS4Gamepad(VGamepad):
 
     def target_alloc(self):
         return self.uinput
+
+    def close(self):
+        """Tear down the virtual gamepad deterministically."""
+        if self._closed:
+            return
+        try:
+            # Drop the Python-side reference first so libevdev can free its resources.
+            self.uinput = None
+        finally:
+            # Closing the /dev/uinput fd destroys the kernel uinput device.
+            if getattr(self, "_uifp", None):
+                self._uifp.close()
+                self._uifp = None
+            self._closed = True
+
+    def __del__(self):
+        """Best-effort cleanup if the caller forgot to call close()."""
+        try:
+            self.close()
+        except Exception:
+            # Avoid raising from GC
+            pass
