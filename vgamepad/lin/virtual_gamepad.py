@@ -57,6 +57,13 @@ class VGamepad(ABC):
         """
         pass
 
+    @abstractmethod
+    def close(self):
+        """
+        Tear down the virtual gamepad deterministically.
+        """
+        pass
+
 
 class VX360Gamepad(VGamepad):
     """

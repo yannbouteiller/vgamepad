@@ -58,6 +58,7 @@ class VGamepad(ABC):
         self.cmp_func = None
         vcli.vigem_target_add(self._busp, self._devicep)
         assert vcli.vigem_target_is_attached(self._devicep), "The virtual device could not connect to ViGEmBus."
+        self._closed = False
 
     def __del__(self):
         vcli.vigem_target_remove(self._busp, self._devicep)
@@ -103,6 +104,13 @@ class VGamepad(ABC):
     def target_alloc(self):
         """
         :return: the pointer to an allocated ViGEm device (e.g. vcli.vigem_target_x360_alloc())
+        """
+        pass
+
+    @abstractmethod
+    def close(self):
+        """
+        Tear down the virtual gamepad deterministically.
         """
         pass
 
@@ -241,6 +249,31 @@ class VX360Gamepad(VGamepad):
 
     def target_alloc(self):
         return vcli.vigem_target_x360_alloc()
+
+    def close(self):
+        """Tear down the virtual gamepad deterministically."""
+        if self._closed:
+            return
+        try:
+            # Unregister any active notifications first
+            if hasattr(self, 'cmp_func') and self.cmp_func is not None:
+                vcli.vigem_target_x360_unregister_notification(self._devicep)
+                self.cmp_func = None
+        finally:
+            # Remove device from bus and free resources
+            if hasattr(self, '_devicep') and self._devicep is not None:
+                vcli.vigem_target_remove(self._busp, self._devicep)
+                vcli.vigem_target_free(self._devicep)
+                self._devicep = None
+            self._closed = True
+
+    def __del__(self):
+        """Best-effort cleanup if the caller forgot to call close()."""
+        try:
+            self.close()
+        except Exception:
+            # Avoid raising from GC
+            pass
 
 
 class VDS4Gamepad(VGamepad):
@@ -417,3 +450,28 @@ class VDS4Gamepad(VGamepad):
 
     def target_alloc(self):
         return vcli.vigem_target_ds4_alloc()
+
+    def close(self):
+        """Tear down the virtual gamepad deterministically."""
+        if self._closed:
+            return
+        try:
+            # Unregister any active notifications first
+            if hasattr(self, 'cmp_func') and self.cmp_func is not None:
+                vcli.vigem_target_ds4_unregister_notification(self._devicep)
+                self.cmp_func = None
+        finally:
+            # Remove device from bus and free resources
+            if hasattr(self, '_devicep') and self._devicep is not None:
+                vcli.vigem_target_remove(self._busp, self._devicep)
+                vcli.vigem_target_free(self._devicep)
+                self._devicep = None
+            self._closed = True
+
+    def __del__(self):
+        """Best-effort cleanup if the caller forgot to call close()."""
+        try:
+            self.close()
+        except Exception:
+            # Avoid raising from GC
+            pass
