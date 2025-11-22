@@ -1,6 +1,7 @@
 """
 VGamepad API (Linux)
 """
+
 from abc import ABC, abstractmethod
 from time import sleep
 
@@ -9,10 +10,9 @@ import vgamepad.win.vigem_commons as vcom
 
 
 class VGamepad(ABC):
-
     def __init__(self):
         self.device = libevdev.Device()
-        self.device.name = 'Virtual Gamepad'
+        self.device.name = "Virtual Gamepad"
 
     def get_vid(self):
         """
@@ -30,13 +30,13 @@ class VGamepad(ABC):
         """
         :param: the new vendor ID of the virtual device
         """
-        self.device.id = {'vendor': vid}  # setter only uses set keys
+        self.device.id = {"vendor": vid}  # setter only uses set keys
 
     def set_pid(self, pid):
         """
         :param: the new product ID of the virtual device
         """
-        self.device.id = {'product': pid}  # setter only uses set keys
+        self.device.id = {"product": pid}  # setter only uses set keys
 
     def get_index(self):
         """
@@ -57,6 +57,13 @@ class VGamepad(ABC):
         """
         pass
 
+    @abstractmethod
+    def close(self):
+        """
+        Tear down the virtual gamepad deterministically.
+        """
+        pass
+
 
 class VX360Gamepad(VGamepad):
     """
@@ -65,7 +72,7 @@ class VX360Gamepad(VGamepad):
 
     def __init__(self):
         super().__init__()
-        self.device.name = 'Xbox 360 Controller'
+        self.device.name = "Xbox 360 Controller"
 
         # Enable buttons
         self.device.enable(libevdev.EV_KEY.BTN_SOUTH)
@@ -87,40 +94,46 @@ class VX360Gamepad(VGamepad):
         # Enable joysticks
         self.device.enable(
             libevdev.EV_ABS.ABS_X,
-            libevdev.InputAbsInfo(minimum=-32768,
-                                  maximum=32767,
-                                  fuzz=16,
-                                  flat=128))
+            libevdev.InputAbsInfo(minimum=-32768, maximum=32767, fuzz=16, flat=128),
+        )
         self.device.enable(
             libevdev.EV_ABS.ABS_Y,
-            libevdev.InputAbsInfo(minimum=-32768,
-                                  maximum=32767,
-                                  fuzz=16,
-                                  flat=128))
+            libevdev.InputAbsInfo(minimum=-32768, maximum=32767, fuzz=16, flat=128),
+        )
         self.device.enable(
             libevdev.EV_ABS.ABS_RX,
-            libevdev.InputAbsInfo(minimum=-32768,
-                                  maximum=32767,
-                                  fuzz=16,
-                                  flat=128))
+            libevdev.InputAbsInfo(minimum=-32768, maximum=32767, fuzz=16, flat=128),
+        )
         self.device.enable(
             libevdev.EV_ABS.ABS_RY,
-            libevdev.InputAbsInfo(minimum=-32768,
-                                  maximum=32767,
-                                  fuzz=16,
-                                  flat=128))
+            libevdev.InputAbsInfo(minimum=-32768, maximum=32767, fuzz=16, flat=128),
+        )
         # Enable triggers
-        self.device.enable(libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=1023))
-        self.device.enable(libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=1023))
+        self.device.enable(
+            libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=255)
+        )
+        self.device.enable(
+            libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=255)
+        )
 
         # Enable D-Pad
-        self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1))
-        self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1))
+        self.device.enable(
+            libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1)
+        )
+        self.device.enable(
+            libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1)
+        )
 
-        self.uinput = self.device.create_uinput_device()
+        # Open /dev/uinput yourself so you fully control the virtual device lifetime.
+        # IMPORTANT: writing permission on /dev/uinput is required (root or proper udev rules).
+        self._uifp = open("/dev/uinput", "r+b", buffering=0)  # BinaryIO file object
+        # Create the uinput device using the managed file object.
+        # Passing uinput_fd ensures the kernel device is tied to this fd.
+        self.uinput = self.device.create_uinput_device(uinput_fd=self._uifp)
 
         self.report = self.get_default_report()
         self.update()
+        self._closed = False
 
     XUSB_BUTTON_TO_EV_KEY = {
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_START: libevdev.EV_KEY.BTN_START,
@@ -137,13 +150,15 @@ class VX360Gamepad(VGamepad):
     }
 
     def get_default_report(self):
-        return vcom.XUSB_REPORT(wButtons=0,
-                                bLeftTrigger=0,
-                                bRightTrigger=0,
-                                sThumbLX=0,
-                                sThumbLY=0,
-                                sThumbRX=0,
-                                sThumbRY=0)
+        return vcom.XUSB_REPORT(
+            wButtons=0,
+            bLeftTrigger=0,
+            bRightTrigger=0,
+            sThumbLX=0,
+            sThumbLY=0,
+            sThumbRX=0,
+            sThumbRY=0,
+        )
 
     def reset(self):
         """
@@ -209,7 +224,8 @@ class VX360Gamepad(VGamepad):
         :param: integer between -32768 and 32767 (0 = neutral position)
         """
         self.report.sThumbLX = x_value
-        self.report.sThumbLY = y_value
+        # Y axis is inverted, align with Windows
+        self.report.sThumbLY = -y_value
 
     def right_joystick(self, x_value, y_value):
         """
@@ -218,7 +234,8 @@ class VX360Gamepad(VGamepad):
         :param: integer between -32768 and 32767 (0 = neutral position)
         """
         self.report.sThumbRX = x_value
-        self.report.sThumbRY = y_value
+        # Y axis is inverted, align with Windows
+        self.report.sThumbRY = -y_value
 
     def left_joystick_float(self, x_value_float, y_value_float):
         """
@@ -226,8 +243,7 @@ class VX360Gamepad(VGamepad):
 
         :param: float between -1.0 and 1.0 (0 = neutral position)
         """
-        self.left_joystick(round(x_value_float * 32767),
-                           round(y_value_float * 32767))
+        self.left_joystick(round(x_value_float * 32767), round(y_value_float * 32767))
 
     def right_joystick_float(self, x_value_float, y_value_float):
         """
@@ -235,8 +251,7 @@ class VX360Gamepad(VGamepad):
 
         :param: float between -1.0 and 1.0 (0 = neutral position)
         """
-        self.right_joystick(round(x_value_float * 32767),
-                            round(y_value_float * 32767))
+        self.right_joystick(round(x_value_float * 32767), round(y_value_float * 32767))
 
     def update(self):
         """
@@ -244,40 +259,74 @@ class VX360Gamepad(VGamepad):
         """
         # Update buttons
         for btn, key in self.XUSB_BUTTON_TO_EV_KEY.items():
-            self.uinput.send_events([
-                libevdev.InputEvent(key, value=(int(bool(self.report.wButtons & btn)))),
-            ])
+            self.uinput.send_events(
+                [
+                    libevdev.InputEvent(
+                        key, value=(int(bool(self.report.wButtons & btn)))
+                    ),
+                ]
+            )
 
         # Update axes
-        self.uinput.send_events([
-            # Left joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=self.report.sThumbLX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=self.report.sThumbLY),
-            # Right joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RX, value=self.report.sThumbRX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=self.report.sThumbRY),
-            # Triggers
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Z, value=self.report.bLeftTrigger * 4),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ, value=self.report.bRightTrigger * 4)
-        ])
+        self.uinput.send_events(
+            [
+                # Left joystick
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=self.report.sThumbLX),
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=self.report.sThumbLY),
+                # Right joystick
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_RX, value=self.report.sThumbRX),
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=self.report.sThumbRY),
+                # Triggers
+                libevdev.InputEvent(
+                    libevdev.EV_ABS.ABS_Z, value=self.report.bLeftTrigger
+                ),
+                libevdev.InputEvent(
+                    libevdev.EV_ABS.ABS_RZ, value=self.report.bRightTrigger
+                ),
+            ]
+        )
 
-        hat0x_value = bool(self.report.wButtons
-                           & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT) - bool(
-                               self.report.wButtons
-                               & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
-        hat0y_value = bool(self.report.wButtons
-                           & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN) - bool(
-                               self.report.wButtons
-                               & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)
-        self.uinput.send_events([
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0X, value=hat0x_value),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat0y_value)
-        ])
+        hat0x_value = bool(
+            self.report.wButtons & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT
+        ) - bool(self.report.wButtons & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
+        hat0y_value = bool(
+            self.report.wButtons & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN
+        ) - bool(self.report.wButtons & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)
+        self.uinput.send_events(
+            [
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0X, value=hat0x_value),
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat0y_value),
+            ]
+        )
 
-        self.uinput.send_events([libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
+        self.uinput.send_events(
+            [libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)]
+        )
 
     def target_alloc(self):
         return self.uinput
+
+    def close(self):
+        """Tear down the virtual gamepad deterministically."""
+        if self._closed:
+            return
+        try:
+            # Drop the Python-side reference first so libevdev can free its resources.
+            self.uinput = None
+        finally:
+            # Closing the /dev/uinput fd destroys the kernel uinput device.
+            if getattr(self, "_uifp", None):
+                self._uifp.close()
+                self._uifp = None
+            self._closed = True
+
+    def __del__(self):
+        """Best-effort cleanup if the caller forgot to call close()."""
+        try:
+            self.close()
+        except Exception:
+            # Avoid raising from GC
+            pass
 
 
 class VDS4Gamepad(VGamepad):
@@ -299,7 +348,7 @@ class VDS4Gamepad(VGamepad):
             vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST: (-1, 0),
             vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST: (-1, -1),
             vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH: (0, -1),
-            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHEAST: (1, -1)
+            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHEAST: (1, -1),
         }
 
         self.DS4_BUTTON_TO_EV_KEY = {
@@ -325,7 +374,9 @@ class VDS4Gamepad(VGamepad):
         # 3: Sony Interactive Entertainment Wireless Controller Touchpad
         # TODO: emulate the motion sensors and touchpad on Linux
 
-        self.device.name = 'Sony Interactive Entertainment Wireless Controller'  # 'PS4 Controller'
+        self.device.name = (
+            "Sony Interactive Entertainment Wireless Controller"  # 'PS4 Controller'
+        )
 
         # Enable buttons
         self.device.enable(libevdev.EV_KEY.BTN_SOUTH)
@@ -343,21 +394,49 @@ class VDS4Gamepad(VGamepad):
         self.device.enable(libevdev.EV_KEY.BTN_THUMBR)
 
         # Enable axes
-        self.device.enable(libevdev.EV_ABS.ABS_X, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
-        self.device.enable(libevdev.EV_ABS.ABS_Y, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
-        self.device.enable(libevdev.EV_ABS.ABS_RX, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
-        self.device.enable(libevdev.EV_ABS.ABS_RY, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
-        self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1, value=0))
-        self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1, value=0))
+        self.device.enable(
+            libevdev.EV_ABS.ABS_X,
+            libevdev.InputAbsInfo(minimum=0, maximum=255, value=127),
+        )
+        self.device.enable(
+            libevdev.EV_ABS.ABS_Y,
+            libevdev.InputAbsInfo(minimum=0, maximum=255, value=127),
+        )
+        self.device.enable(
+            libevdev.EV_ABS.ABS_RX,
+            libevdev.InputAbsInfo(minimum=0, maximum=255, value=127),
+        )
+        self.device.enable(
+            libevdev.EV_ABS.ABS_RY,
+            libevdev.InputAbsInfo(minimum=0, maximum=255, value=127),
+        )
+        self.device.enable(
+            libevdev.EV_ABS.ABS_HAT0X,
+            libevdev.InputAbsInfo(minimum=-1, maximum=1, value=0),
+        )
+        self.device.enable(
+            libevdev.EV_ABS.ABS_HAT0Y,
+            libevdev.InputAbsInfo(minimum=-1, maximum=1, value=0),
+        )
 
         # Enable triggers
-        self.device.enable(libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=255))
-        self.device.enable(libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=255))
+        self.device.enable(
+            libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=255)
+        )
+        self.device.enable(
+            libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=255)
+        )
 
-        self.uinput = self.device.create_uinput_device()
+        # Open /dev/uinput yourself so you fully control the virtual device lifetime.
+        # IMPORTANT: writing permission on /dev/uinput is required (root or proper udev rules).
+        self._uifp = open("/dev/uinput", "r+b", buffering=0)  # BinaryIO file object
+        # Create the uinput device using the managed file object.
+        # Passing uinput_fd ensures the kernel device is tied to this fd.
+        self.uinput = self.device.create_uinput_device(uinput_fd=self._uifp)
 
         self.report = self.get_default_report()
         self.update()
+        self._closed = False
 
     def get_default_report(self):
         rep = vcom.DS4_REPORT(
@@ -368,7 +447,8 @@ class VDS4Gamepad(VGamepad):
             wButtons=0,
             bSpecial=0,
             bTriggerL=0,
-            bTriggerR=0)
+            bTriggerR=0,
+        )
         vcom.DS4_REPORT_INIT(rep)
         return rep
 
@@ -470,8 +550,9 @@ class VDS4Gamepad(VGamepad):
 
         :param: float between -1.0 and 1.0 (0 = neutral position)
         """
-        self.left_joystick(128 + round(x_value_float * 127),
-                           128 + round(y_value_float * 127))
+        self.left_joystick(
+            128 + round(x_value_float * 127), 128 + round(y_value_float * 127)
+        )
 
     def right_joystick_float(self, x_value_float, y_value_float):
         """
@@ -479,8 +560,9 @@ class VDS4Gamepad(VGamepad):
 
         :param: float between -1.0 and 1.0 (0 = neutral position)
         """
-        self.right_joystick(128 + round(x_value_float * 127),
-                            128 + round(y_value_float * 127))
+        self.right_joystick(
+            128 + round(x_value_float * 127), 128 + round(y_value_float * 127)
+        )
 
     def directional_pad(self, direction):
         """
@@ -497,36 +579,74 @@ class VDS4Gamepad(VGamepad):
         Sends the current report (i.e. commands) to the virtual device
         """
         for btn, key in self.DS4_BUTTON_TO_EV_KEY.items():
-            self.uinput.send_events([
-                libevdev.InputEvent(key, value=(int(bool(self.report.wButtons & btn)))),
-            ])
+            self.uinput.send_events(
+                [
+                    libevdev.InputEvent(
+                        key, value=(int(bool(self.report.wButtons & btn)))
+                    ),
+                ]
+            )
 
         for btn, key in self.DS4_SPECIAL_BUTTON_TO_EV_KEY.items():
-            self.uinput.send_events([
-                libevdev.InputEvent(key, value=(int(bool(self.report.bSpecial & btn)))),
-            ])
+            self.uinput.send_events(
+                [
+                    libevdev.InputEvent(
+                        key, value=(int(bool(self.report.bSpecial & btn)))
+                    ),
+                ]
+            )
 
         # Update axes
-        self.uinput.send_events([
-            # Left joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=self.report.bThumbLX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=self.report.bThumbLY),
-            # Right joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RX, value=self.report.bThumbRX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=self.report.bThumbRY),
-            # Triggers
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Z, value=self.report.bTriggerL),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ, value=self.report.bTriggerR)
-        ])
+        self.uinput.send_events(
+            [
+                # Left joystick
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=self.report.bThumbLX),
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=self.report.bThumbLY),
+                # Right joystick
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_RX, value=self.report.bThumbRX),
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=self.report.bThumbRY),
+                # Triggers
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_Z, value=self.report.bTriggerL),
+                libevdev.InputEvent(
+                    libevdev.EV_ABS.ABS_RZ, value=self.report.bTriggerR
+                ),
+            ]
+        )
 
         hat0x_value, hat0y_value = self.dpad_mapping[self.dpad_direction]
 
-        self.uinput.send_events([
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0X, value=hat0x_value),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat0y_value)
-        ])
+        self.uinput.send_events(
+            [
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0X, value=hat0x_value),
+                libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat0y_value),
+            ]
+        )
 
-        self.uinput.send_events([libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
+        self.uinput.send_events(
+            [libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)]
+        )
 
     def target_alloc(self):
         return self.uinput
+
+    def close(self):
+        """Tear down the virtual gamepad deterministically."""
+        if self._closed:
+            return
+        try:
+            # Drop the Python-side reference first so libevdev can free its resources.
+            self.uinput = None
+        finally:
+            # Closing the /dev/uinput fd destroys the kernel uinput device.
+            if getattr(self, "_uifp", None):
+                self._uifp.close()
+                self._uifp = None
+            self._closed = True
+
+    def __del__(self):
+        """Best-effort cleanup if the caller forgot to call close()."""
+        try:
+            self.close()
+        except Exception:
+            # Avoid raising from GC
+            pass
