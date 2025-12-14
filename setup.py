@@ -53,7 +53,7 @@ if is_windows:
 
     # Prompt installation of the ViGEmBus driver (blocking call)
     if sys.argv[1] != 'egg_info' and sys.argv[1] != 'sdist':
-        if not vigem_installed and os.environ.get('VGAMEPAD_SKIP_VIGEMBUS_INSTALL', 'false') == 'false':
+        if not vigem_installed and not os.environ.get('VGAMEPAD_SKIP_VIGEMBUS_INSTALL', 'false') == 'true':
             subprocess.call(['msiexec', '/i', '%s' % str(pathMsi)], shell=True)
 
 with open("README.md", "r") as fh:
