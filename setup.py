@@ -78,7 +78,6 @@ setup(
         'Intended Audience :: Education',
         'Intended Audience :: Information Technology',
         'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: MIT License',
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python',
         'Topic :: Software Development :: Build Tools',
