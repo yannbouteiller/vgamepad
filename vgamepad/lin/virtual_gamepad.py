@@ -2,56 +2,67 @@
 VGamepad API (Linux)
 """
 from abc import ABC, abstractmethod
-from time import sleep
+from typing import Literal, TypedDict
 
-import libevdev
+import libevdev # type: ignore # Sadly, libevdev is not typed
 import vgamepad.win.vigem_commons as vcom
 
 
-class VGamepad(ABC):
+class DeviceId(TypedDict):
+    vendor: int
+    product: int
+    bustype: int
+    version: int
 
-    def __init__(self):
+class VGamepad(ABC):
+    def __init__(self) -> None:
         self.device = libevdev.Device()
         self.device.name = 'Virtual Gamepad'
 
-    def get_vid(self):
+    def get_id(self) -> DeviceId:
+        """
+        :return: A dict with the keys `bustype`, `vendor`, `product`, `version`.
+        """
+        return self.device.id
+
+    def get_vid(self) -> int:
         """
         :return: the vendor ID of the virtual device
         """
-        return self.device.id.vendor
+        return self.get_id()["vendor"]
 
-    def get_pid(self):
+    def get_pid(self) -> int:
         """
         :return: the product ID of the virtual device
         """
-        return self.device.id.product
+        return self.get_id()["product"]
 
-    def set_vid(self, vid):
+    def set_vid(self, vid: int) -> None:
         """
         :param: the new vendor ID of the virtual device
         """
         self.device.id = {'vendor': vid}  # setter only uses set keys
 
-    def set_pid(self, pid):
+    def set_pid(self, pid: int) -> None:
         """
         :param: the new product ID of the virtual device
         """
         self.device.id = {'product': pid}  # setter only uses set keys
 
-    def get_index(self):
+    def get_index(self) -> Literal[0]:
         """
         :return: the internally used index of the target device
         """
         return 0
 
-    def get_type(self):
+    def get_type(self) -> int:
         """
         :return: the type of the object (e.g. Xbox360Wired)
         """
-        return self.device.id.bustype
+        return self.get_id()["bustype"]
 
     @abstractmethod
-    def target_alloc(self):
+    def target_alloc(self) -> libevdev.Device:
         """
         :return: the pointer to an allocated evdev device (e.g. create_uinput_device())
         """
@@ -63,7 +74,7 @@ class VX360Gamepad(VGamepad):
     Virtual Xbox360 gamepad
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.device.name = 'Xbox 360 Controller'
 
@@ -117,9 +128,9 @@ class VX360Gamepad(VGamepad):
         self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1))
         self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1))
 
-        self.uinput = self.device.create_uinput_device()
+        self.uinput: libevdev.Device = self.device.create_uinput_device()
 
-        self.report = self.get_default_report()
+        self.report: vcom.XUSB_REPORT = self.get_default_report()
         self.update()
 
     XUSB_BUTTON_TO_EV_KEY = {
@@ -136,7 +147,7 @@ class VX360Gamepad(VGamepad):
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_Y: libevdev.EV_KEY.BTN_WEST,
     }
 
-    def get_default_report(self):
+    def get_default_report(self) -> vcom.XUSB_REPORT:
         return vcom.XUSB_REPORT(wButtons=0,
                                 bLeftTrigger=0,
                                 bRightTrigger=0,
@@ -145,13 +156,13 @@ class VX360Gamepad(VGamepad):
                                 sThumbRX=0,
                                 sThumbRY=0)
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Resets the report to the default state
         """
         self.report = self.get_default_report()
 
-    def press_button(self, button):
+    def press_button(self, button: vcom.XUSB_BUTTON) -> None:
         """
         Presses a button (no effect if already pressed)
         All possible buttons are in XUSB_BUTTON
@@ -161,7 +172,7 @@ class VX360Gamepad(VGamepad):
         """
         self.report.wButtons = self.report.wButtons | button
 
-    def release_button(self, button):
+    def release_button(self, button: vcom.XUSB_BUTTON) -> None:
         """
         Releases a button (no effect if already released)
         All possible buttons are in XUSB_BUTTON
@@ -170,7 +181,7 @@ class VX360Gamepad(VGamepad):
         """
         self.report.wButtons = self.report.wButtons & ~button
 
-    def left_trigger(self, value):
+    def left_trigger(self, value: int) -> None:
         """
         Sets the value of the left trigger
 
@@ -178,7 +189,7 @@ class VX360Gamepad(VGamepad):
         """
         self.report.bLeftTrigger = value
 
-    def right_trigger(self, value):
+    def right_trigger(self, value: int) -> None:
         """
         Sets the value of the right trigger
 
@@ -186,7 +197,7 @@ class VX360Gamepad(VGamepad):
         """
         self.report.bRightTrigger = value
 
-    def left_trigger_float(self, value_float):
+    def left_trigger_float(self, value_float: float) -> None:
         """
         Sets the value of the left trigger
 
@@ -194,7 +205,7 @@ class VX360Gamepad(VGamepad):
         """
         self.left_trigger(round(value_float * 255))
 
-    def right_trigger_float(self, value_float):
+    def right_trigger_float(self, value_float: float) -> None:
         """
         Sets the value of the right trigger
 
@@ -202,7 +213,7 @@ class VX360Gamepad(VGamepad):
         """
         self.right_trigger(round(value_float * 255))
 
-    def left_joystick(self, x_value, y_value):
+    def left_joystick(self, x_value: int, y_value: int) -> None:
         """
         Sets the values of the X and Y axis for the left joystick
 
@@ -211,7 +222,7 @@ class VX360Gamepad(VGamepad):
         self.report.sThumbLX = x_value
         self.report.sThumbLY = y_value
 
-    def right_joystick(self, x_value, y_value):
+    def right_joystick(self, x_value: int, y_value: int) -> None:
         """
         Sets the values of the X and Y axis for the right joystick
 
@@ -220,7 +231,7 @@ class VX360Gamepad(VGamepad):
         self.report.sThumbRX = x_value
         self.report.sThumbRY = y_value
 
-    def left_joystick_float(self, x_value_float, y_value_float):
+    def left_joystick_float(self, x_value_float: float, y_value_float: float) -> None:
         """
         Sets the values of the X and Y axis for the left joystick
 
@@ -229,7 +240,7 @@ class VX360Gamepad(VGamepad):
         self.left_joystick(round(x_value_float * 32767),
                            round(y_value_float * 32767))
 
-    def right_joystick_float(self, x_value_float, y_value_float):
+    def right_joystick_float(self, x_value_float: float, y_value_float: float) -> None:
         """
         Sets the values of the X and Y axis for the right joystick
 
@@ -238,7 +249,7 @@ class VX360Gamepad(VGamepad):
         self.right_joystick(round(x_value_float * 32767),
                             round(y_value_float * 32767))
 
-    def update(self):
+    def update(self) -> None:
         """
         Sends the current report (i.e. commands) to the virtual device
         """
@@ -276,7 +287,7 @@ class VX360Gamepad(VGamepad):
 
         self.uinput.send_events([libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
 
-    def target_alloc(self):
+    def target_alloc(self) -> libevdev.Device:
         return self.uinput
 
 
@@ -285,7 +296,7 @@ class VDS4Gamepad(VGamepad):
     Virtual DuslaShock 4 gamepad
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.dpad_direction = vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
@@ -354,12 +365,12 @@ class VDS4Gamepad(VGamepad):
         self.device.enable(libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=255))
         self.device.enable(libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=255))
 
-        self.uinput = self.device.create_uinput_device()
+        self.uinput: libevdev.Device = self.device.create_uinput_device()
 
-        self.report = self.get_default_report()
+        self.report: vcom.DS4_REPORT = self.get_default_report()
         self.update()
 
-    def get_default_report(self):
+    def get_default_report(self) -> vcom.DS4_REPORT:
         rep = vcom.DS4_REPORT(
             bThumbLX=0,
             bThumbLY=0,
@@ -372,13 +383,13 @@ class VDS4Gamepad(VGamepad):
         vcom.DS4_REPORT_INIT(rep)
         return rep
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Resets the report to the default state
         """
         self.report = self.get_default_report()
 
-    def press_button(self, button):
+    def press_button(self, button: vcom.DS4_BUTTONS) -> None:
         """
         Presses a button (no effect if already pressed)
         All possible buttons are in DS4_BUTTONS
@@ -387,7 +398,7 @@ class VDS4Gamepad(VGamepad):
         """
         self.report.wButtons = self.report.wButtons | button
 
-    def release_button(self, button):
+    def release_button(self, button: vcom.DS4_BUTTONS) -> None:
         """
         Releases a button (no effect if already released)
         All possible buttons are in DS4_BUTTONS
@@ -396,7 +407,7 @@ class VDS4Gamepad(VGamepad):
         """
         self.report.wButtons = self.report.wButtons & ~button
 
-    def press_special_button(self, special_button):
+    def press_special_button(self, special_button: vcom.DS4_SPECIAL_BUTTONS) -> None:
         """
         Presses a special button (no effect if already pressed)
         All possible buttons are in DS4_SPECIAL_BUTTONS
@@ -405,7 +416,7 @@ class VDS4Gamepad(VGamepad):
         """
         self.report.bSpecial = self.report.bSpecial | special_button
 
-    def release_special_button(self, special_button):
+    def release_special_button(self, special_button: vcom.DS4_SPECIAL_BUTTONS) -> None:
         """
         Releases a special button (no effect if already released)
         All possible buttons are in DS4_SPECIAL_BUTTONS
@@ -414,7 +425,7 @@ class VDS4Gamepad(VGamepad):
         """
         self.report.bSpecial = self.report.bSpecial & ~special_button
 
-    def left_trigger(self, value):
+    def left_trigger(self, value: int) -> None:
         """
         Sets the value of the left trigger
 
@@ -422,7 +433,7 @@ class VDS4Gamepad(VGamepad):
         """
         self.report.bTriggerL = value
 
-    def right_trigger(self, value):
+    def right_trigger(self, value: int) -> None:
         """
         Sets the value of the right trigger
 
@@ -430,7 +441,7 @@ class VDS4Gamepad(VGamepad):
         """
         self.report.bTriggerR = value
 
-    def left_trigger_float(self, value_float):
+    def left_trigger_float(self, value_float: float) -> None:
         """
         Sets the value of the left trigger
 
@@ -438,7 +449,7 @@ class VDS4Gamepad(VGamepad):
         """
         self.left_trigger(round(value_float * 255))
 
-    def right_trigger_float(self, value_float):
+    def right_trigger_float(self, value_float: float) -> None:
         """
         Sets the value of the right trigger
 
@@ -446,7 +457,7 @@ class VDS4Gamepad(VGamepad):
         """
         self.right_trigger(round(value_float * 255))
 
-    def left_joystick(self, x_value, y_value):
+    def left_joystick(self, x_value: int, y_value: int) -> None:
         """
         Sets the values of the X and Y axis for the left joystick
 
@@ -455,7 +466,7 @@ class VDS4Gamepad(VGamepad):
         self.report.bThumbLX = x_value
         self.report.bThumbLY = y_value
 
-    def right_joystick(self, x_value, y_value):
+    def right_joystick(self, x_value: int, y_value: int) -> None:
         """
         Sets the values of the X and Y axis for the right joystick
 
@@ -464,7 +475,7 @@ class VDS4Gamepad(VGamepad):
         self.report.bThumbRX = x_value
         self.report.bThumbRY = y_value
 
-    def left_joystick_float(self, x_value_float, y_value_float):
+    def left_joystick_float(self, x_value_float: float, y_value_float: float) -> None:
         """
         Sets the values of the X and Y axis for the left joystick
 
@@ -473,7 +484,7 @@ class VDS4Gamepad(VGamepad):
         self.left_joystick(128 + round(x_value_float * 127),
                            128 + round(y_value_float * 127))
 
-    def right_joystick_float(self, x_value_float, y_value_float):
+    def right_joystick_float(self, x_value_float: float, y_value_float: float) -> None:
         """
         Sets the values of the X and Y axis for the right joystick
 
@@ -482,7 +493,7 @@ class VDS4Gamepad(VGamepad):
         self.right_joystick(128 + round(x_value_float * 127),
                             128 + round(y_value_float * 127))
 
-    def directional_pad(self, direction):
+    def directional_pad(self, direction: vcom.DS4_DPAD_DIRECTIONS) -> None:
         """
         Sets the direction of the directional pad (hat)
         All possible directions are in DS4_DPAD_DIRECTIONS
@@ -492,7 +503,7 @@ class VDS4Gamepad(VGamepad):
         vcom.DS4_SET_DPAD(self.report, direction)
         self.dpad_direction = direction
 
-    def update(self):
+    def update(self) -> None:
         """
         Sends the current report (i.e. commands) to the virtual device
         """
@@ -528,5 +539,5 @@ class VDS4Gamepad(VGamepad):
 
         self.uinput.send_events([libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
 
-    def target_alloc(self):
+    def target_alloc(self) -> libevdev.Device:
         return self.uinput
