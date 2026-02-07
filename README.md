@@ -23,6 +23,7 @@ __Development status:__
   - [XBox360 gamepad](#xbox360-gamepad)
   - [DualShock4 gamepad](#dualshock4-gamepad)
   - [Rumble and LEDs](#rumble-and-leds)
+- [Advanced](#advanced-users)
 - [Contribute](#authors)
 
 ---
@@ -395,7 +396,11 @@ gamepad.unregister_notification()
 
 ### Advanced users:
 More API functions are available for advanced users, and it is possible to modify the report directly instead of using the API.
-See [virtual_gamepad.py](https://github.com/yannbouteiller/vgamepad/blob/main/vgamepad/win/virtual_gamepad.py).
+See [virtual_gamepad.py](https://github.com/yannbouteiller/vgamepad/blob/main/vgamepad/win/virtual_gamepad.py). 
+
+To skip installation of the `ViGEmBus` driver during `vgamepad` installation on Windows, set the `VGAMEPAD_SKIP_VIGEMBUS_INSTALL` environment variable to `true` before installing `vgamepad`.
+
+_Note: only `ViGEmBus 1.17.333.0` is tested._
 
 ---
 
