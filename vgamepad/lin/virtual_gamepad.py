@@ -5,17 +5,18 @@ from __future__ import annotations
 import contextlib
 import ctypes
 import fcntl
-import os
 import select
 import struct
+import sys
 import threading
+import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from inspect import signature
 from typing import Any, ClassVar
 
 import libevdev
-from loguru import logger
+from loguru import logger  # Logging is off by default. It can be enabled in __init__.py
 
 import vgamepad.win.vigem_commons as vcom
 
@@ -78,13 +79,13 @@ class _FFErase(ctypes.Structure):
 
 
 def _dummy_callback(
-    client: Any,
-    target: Any,
-    large_motor: int,
-    small_motor: int,
-    led_number: int,
-    user_data: Any,
-) -> None:
+        client,
+        target,
+        large_motor,
+        small_motor,
+        led_number,
+        user_data,
+):
     pass
 
 
@@ -137,77 +138,6 @@ class VGamepad(ABC):
         """Return the type of the object (bus type)."""
         return self.device.id.bustype
 
-    def register_notification(self, callback_function: Callable[..., Any]) -> None:
-        """Register a callback for force-feedback notifications.
-
-        On Linux force feedback is implemented by reading ``FF_RUMBLE``
-        events from the uinput device.  The callback receives the same
-        signature as Windows:
-
-            ``callback(client, target, large_motor, small_motor, led_number, user_data)``
-
-        ``large_motor`` and ``small_motor`` are scaled to 0-255 from the
-        kernel's 0-65535 range.
-        """
-        if signature(callback_function) != signature(_dummy_callback):
-            raise TypeError(
-                f"Expected callback signature: {signature(_dummy_callback)}, "
-                f"got: {signature(callback_function)}"
-            )
-
-        self._ff_callback = callback_function
-
-        if self._ff_thread is not None:
-            return
-
-        devnode = self.uinput.devnode
-        if devnode is None:
-            return
-
-        self._ff_stop.clear()
-        self._ff_thread = threading.Thread(
-            target=self._ff_reader_loop,
-            args=(devnode,),
-            daemon=True,
-        )
-        self._ff_thread.start()
-
-    def _ff_reader_loop(self, devnode: str) -> None:
-        """Background thread: reads EV_FF / EV_UINPUT events and dispatches rumble callbacks."""
-        try:
-            fd = os.open(devnode, os.O_RDWR | os.O_NONBLOCK)
-        except OSError:
-            logger.warning("Could not open {} for force-feedback reading", devnode)
-            return
-        try:
-            while not self._ff_stop.is_set():
-                ready, _, _ = select.select([fd], [], [], 0.1)
-                if not ready:
-                    continue
-                try:
-                    data = os.read(fd, 24)
-                except OSError:
-                    continue
-                if len(data) < 24:
-                    continue
-                _sec, _usec, ev_type, ev_code, ev_value = struct.unpack("llHHi", data)
-                if ev_type == _EV_FF and ev_code in self._ff_effects:
-                    strong, weak = self._ff_effects[ev_code]
-                    large_motor = (strong * 255) // 65535 if strong else 0
-                    small_motor = (weak * 255) // 65535 if weak else 0
-                    if self._ff_callback:
-                        try:
-                            self._ff_callback(None, None, large_motor, small_motor, 0, None)
-                        except Exception:
-                            logger.opt(exception=True).debug("FF callback raised")
-                elif ev_type == _EV_UINPUT:
-                    if ev_code == _UI_FF_UPLOAD:
-                        self._handle_ff_upload(fd, ev_value)
-                    elif ev_code == _UI_FF_ERASE:
-                        self._handle_ff_erase(fd, ev_value)
-        finally:
-            os.close(fd)
-
     def _handle_ff_upload(self, fd: int, request_id: int) -> None:
         """Handle a UI_FF_UPLOAD request from the kernel."""
         upload = _FFUpload()
@@ -241,24 +171,100 @@ class VGamepad(ABC):
         with contextlib.suppress(OSError):
             fcntl.ioctl(fd, UI_END_FF_ERASE, erase)
 
-    def unregister_notification(self) -> None:
-        """Unregister a previously registered callback function."""
-        self._ff_callback = None
-        self._ff_stop.set()
-        if self._ff_thread is not None:
-            self._ff_thread.join(timeout=2.0)
-            self._ff_thread = None
-        self._ff_effects.clear()
+    def get_raw_uinput_fd(self) -> int:
+        """Retrieves fd from /dev/uinput, bypassing libevdev."""
+        for fd in os.listdir("/proc/self/fd"):
+            try:
+                if os.readlink(f"/proc/self/fd/{fd}") == "/dev/uinput":
+                    return int(fd)
+            except OSError:
+                continue
+        raise RuntimeError("No dev/input open")
 
-    def __del__(self) -> None:
-        self._ff_stop.set()
-        if self._ff_thread is not None:
-            self._ff_thread.join(timeout=1.0)
+    def register_notification(self, callback_function: Callable[..., Any]) -> None:
+        """Register a callback for force-feedback notifications.
 
-    @abstractmethod
-    def target_alloc(self) -> Any:
-        """Return the pointer to an allocated evdev device."""
-        ...
+        On Linux force feedback is implemented by reading ``FF_RUMBLE``
+        events from the uinput device.  The callback receives the same
+        signature as Windows:
+
+            ``callback(client, target, large_motor, small_motor, led_number, user_data)``
+
+        ``large_motor`` and ``small_motor`` are scaled to 0-255 from the
+        kernel's 0-65535 range.
+        """
+        if signature(callback_function) != signature(_dummy_callback):
+            raise TypeError(
+                f"Expected callback signature: {signature(_dummy_callback)}, "
+                f"got: {signature(callback_function)}"
+            )
+
+        self._ff_callback = callback_function
+
+        if self._ff_thread is not None:
+            return
+        uinput_fd = self.get_raw_uinput_fd()
+        if uinput_fd is None:
+            return
+
+        self._ff_stop.clear()
+        self._ff_thread = threading.Thread(
+            target=self._ff_reader_loop,
+            args=(uinput_fd,),
+            daemon=True,
+        )
+        self._ff_thread.start()
+
+    def _ff_reader_loop(self, fd: int) -> None:
+        """Background thread: reads EV_FF / EV_UINPUT events and dispatches rumble callbacks."""
+        os.set_blocking(fd, False)
+        while not self._ff_stop.is_set():
+            ready, _, _ = select.select([fd], [], [], 0.1)
+            if not ready:
+                continue
+            try:
+                data = os.read(fd, 24)
+            except OSError:
+                continue
+            if len(data) < 24:
+                continue
+            _sec, _usec, ev_type, ev_code, ev_value = struct.unpack("llHHi", data)
+            if ev_type == _EV_FF and ev_code in self._ff_effects:
+                strong, weak = self._ff_effects[ev_code]
+                large_motor = (strong * 255) // 65535 if strong else 0
+                small_motor = (weak * 255) // 65535 if weak else 0
+                if self._ff_callback:
+                    try:
+                        self._ff_callback(None, None, large_motor, small_motor, 0, None)
+                    except Exception:
+                        logger.opt(exception=True).debug("FF callback raised")
+            elif ev_type == _EV_UINPUT:
+                if ev_code == _UI_FF_UPLOAD:
+                    self._handle_ff_upload(fd, ev_value)
+                elif ev_code == _UI_FF_ERASE:
+                    self._handle_ff_erase(fd, ev_value)
+
+
+def unregister_notification(self) -> None:
+    """Unregister a previously registered callback function."""
+    self._ff_callback = None
+    self._ff_stop.set()
+    if self._ff_thread is not None:
+        self._ff_thread.join(timeout=2.0)
+        self._ff_thread = None
+    self._ff_effects.clear()
+
+
+def __del__(self) -> None:
+    self._ff_stop.set()
+    if self._ff_thread is not None:
+        self._ff_thread.join(timeout=1.0)
+
+
+@abstractmethod
+def target_alloc(self) -> Any:
+    """Return the pointer to an allocated evdev device."""
+    ...
 
 
 class VX360Gamepad(VGamepad):
