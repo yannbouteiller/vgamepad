@@ -39,10 +39,10 @@ On **Linux**, `vgamepad` uses `libevdev` to create virtual `uinput` devices.
 pip install vgamepad
 ```
 
-This automatically runs the installer for the ViGEmBus driver.
+The ViGEmBus installer runs the first time you `import vgamepad` after a normal `pip install` from PyPI (wheels do not execute `setup.py` on your machine). It also runs during editable installs (`pip install -e .`) from the project’s `setup.py`.
 Accept the licence agreement, click **Install**, allow the installer to modify your PC, wait for completion and click **Finish**.
 
-> To skip ViGEmBus installation, set the environment variable `VGAMEPAD_SKIP_VIGEMBUS_INSTALL=true` before installing.
+> To skip ViGEmBus installation, set `VGAMEPAD_SKIP_VIGEMBUS_INSTALL=true` before importing `vgamepad`, or before an editable install if you use `pip install -e .`.
 
 ### Linux
 
@@ -374,12 +374,15 @@ gamepad.unregister_notification()
 
 ## Logging
 
-`vgamepad` uses [loguru](https://github.com/Delgan/loguru) for internal logging, which is **disabled** by default.
+Internal messages use Python’s standard `logging` library under the logger name `vgamepad`. Logging is **disabled** by default.
 To enable diagnostic output:
 
 ```python
-from loguru import logger
-logger.enable("vgamepad")
+import logging
+
+log = logging.getLogger("vgamepad")
+log.disabled = False
+log.setLevel(logging.DEBUG)
 ```
 
 ---

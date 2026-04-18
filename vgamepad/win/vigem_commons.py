@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from ctypes import Structure, Union, c_short, c_ubyte, c_ushort
 from enum import IntEnum, IntFlag
+from inspect import signature
 
 c_byte = c_ubyte  # BYTE in C is unsigned char
 
@@ -196,3 +198,11 @@ class VIGEM_ERRORS(IntEnum):
     VIGEM_ERROR_XUSB_USERINDEX_OUT_OF_RANGE = 0xE0000014
     VIGEM_ERROR_INVALID_PARAMETER = 0xE0000015
     VIGEM_ERROR_NOT_SUPPORTED = 0xE0000016
+
+
+def notification_callback_matches(candidate: Callable[..., object]) -> bool:
+    """True if *candidate* accepts the six rumble/LED parameters (name/annotations may differ)."""
+    try:
+        return len(signature(candidate).parameters) == 6
+    except (ValueError, TypeError):
+        return False

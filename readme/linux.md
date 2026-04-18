@@ -6,7 +6,13 @@
 
 ### Prerequisite
 
-On Linux, `vgamepad` needs access to `uinput`.
+Install the **native** libevdev library (the `libevdev` package on PyPI only provides Python bindings; it does not ship `libevdev.so`):
+
+- **Debian / Ubuntu / WSL:** `sudo apt update && sudo apt install libevdev2`
+- **Fedora:** `sudo dnf install libevdev`
+- **Arch:** `sudo pacman -S libevdev`
+
+On Linux, `vgamepad` also needs access to `uinput`.
 
 To give yourself permission to access `uinput` for the current session, open a terminal and execute:
 ```bash
@@ -49,6 +55,7 @@ On Linux, `vgamepad` uses `libevdev` to create virtual `uinput` devices. The Lin
 - `reset()`, `get_vid()`, `get_pid()`, `set_vid()`, `set_pid()`, `get_type()`, `get_index()`
 
 ### Notes
+- **WSL:** `vgamepad` can create uinput devices, but **pygame** integration tests may not see them (SDL often enumerates zero joysticks). Run those tests on a normal Linux desktop or on Windows; the library itself still works if `libevdev` and `/dev/uinput` are set up.
 - Detected button ordering and axis directions may differ from Windows depending on the consuming application (e.g. pygame maps button indices differently)
 - LED number in the rumble callback is always 0 on Linux
 - Force feedback notifications are delivered via a background thread that reads FF events from the uinput device

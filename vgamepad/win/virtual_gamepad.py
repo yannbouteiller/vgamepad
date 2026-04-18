@@ -6,7 +6,6 @@ import ctypes
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from ctypes import CFUNCTYPE, c_ubyte, c_void_p
-from inspect import signature
 from typing import Any
 
 import vgamepad.win.vigem_client as vcli
@@ -172,10 +171,10 @@ class VX360Gamepad(VGamepad):
 
         :param callback_function: ``f(client, target, large_motor, small_motor, led_number, user_data)``
         """
-        if signature(callback_function) != signature(_dummy_callback):
+        if not vcom.notification_callback_matches(callback_function):
             raise TypeError(
-                f"Expected callback signature: {signature(_dummy_callback)}, "
-                f"got: {signature(callback_function)}"
+                "Expected a callback with six parameters "
+                "(client, target, large_motor, small_motor, led_number, user_data)"
             )
         self.cmp_func = self.CMPFUNC(callback_function)
         _check_err(vcli.vigem_target_x360_register_notification(self._busp, self._devicep, self.cmp_func, None))
@@ -299,10 +298,10 @@ class VDS4Gamepad(VGamepad):
 
         :param callback_function: ``f(client, target, large_motor, small_motor, led_number, user_data)``
         """
-        if signature(callback_function) != signature(_dummy_callback):
+        if not vcom.notification_callback_matches(callback_function):
             raise TypeError(
-                f"Expected callback signature: {signature(_dummy_callback)}, "
-                f"got: {signature(callback_function)}"
+                "Expected a callback with six parameters "
+                "(client, target, large_motor, small_motor, led_number, user_data)"
             )
         self.cmp_func = self.CMPFUNC(callback_function)
         _check_err(vcli.vigem_target_ds4_register_notification(self._busp, self._devicep, self.cmp_func, None))

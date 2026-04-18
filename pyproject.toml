@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -22,7 +22,6 @@ keywords = [
     "emulator",
 ]
 dependencies = [
-    "loguru>=0.7",
     "libevdev>=0.11,<1; sys_platform == 'linux'",
 ]
 
@@ -32,7 +31,6 @@ classifiers = [
     "Intended Audience :: Education",
     "Intended Audience :: Information Technology",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
@@ -64,6 +62,15 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["vgamepad*"]
 
+# Required so Windows DLLs and MSI installers are present in wheels from PyPI.
+[tool.setuptools.package-data]
+vgamepad = [
+    "win/vigem/client/x64/ViGEmClient.dll",
+    "win/vigem/client/x86/ViGEmClient.dll",
+    "win/vigem/install/x64/ViGEmBusSetup_x64.msi",
+    "win/vigem/install/x86/ViGEmBusSetup_x86.msi",
+]
+
 [tool.ruff]
 target-version = "py38"
 line-length = 120
@@ -89,8 +96,9 @@ ignore = [
 known-first-party = ["vgamepad"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
+

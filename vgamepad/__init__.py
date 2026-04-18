@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+import logging
 import platform
-
-from loguru import logger
 
 from vgamepad.win.vigem_commons import (
     DS4_BUTTONS,
@@ -21,7 +20,14 @@ from vgamepad.win.vigem_commons import (
 
 __version__ = "0.1.3"
 
-logger.disable("vgamepad")
+_pkg_log = logging.getLogger("vgamepad")
+_pkg_log.addHandler(logging.NullHandler())
+_pkg_log.disabled = True
+
+if platform.system() == "Windows":
+    from vgamepad.win.vigem_install import ensure_vigembus_installed
+
+    ensure_vigembus_installed()
 
 if platform.system() == "Windows":
     from vgamepad.win.virtual_gamepad import VDS4Gamepad, VX360Gamepad

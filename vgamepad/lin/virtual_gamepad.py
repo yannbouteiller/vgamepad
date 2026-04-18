@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import ctypes
 import fcntl
+import logging
 import os
 import select
 import struct
@@ -15,9 +16,21 @@ from inspect import signature
 from typing import Any, ClassVar
 
 import libevdev
-from loguru import logger
 
 import vgamepad.win.vigem_commons as vcom
+
+_log = logging.getLogger("vgamepad")
+
+
+def _safe_uinput_devnode(uinput: object) -> str | None:
+    """Return uinput event node path, or None if unavailable (some kernels/WSL quirks)."""
+    try:
+        dn = uinput.devnode  # type: ignore[attr-defined]
+    except Exception:
+        return None
+    if dn is None:
+        return None
+    return str(dn)
 
 
 def _ioc(direction: int, ioc_type: int, nr: int, size: int) -> int:
@@ -149,9 +162,10 @@ class VGamepad(ABC):
         ``large_motor`` and ``small_motor`` are scaled to 0-255 from the
         kernel's 0-65535 range.
         """
-        if signature(callback_function) != signature(_dummy_callback):
+        if not vcom.notification_callback_matches(callback_function):
             raise TypeError(
-                f"Expected callback signature: {signature(_dummy_callback)}, "
+                f"Expected a callback with six parameters "
+                f"(client, target, large_motor, small_motor, led_number, user_data); "
                 f"got: {signature(callback_function)}"
             )
 
@@ -160,7 +174,7 @@ class VGamepad(ABC):
         if self._ff_thread is not None:
             return
 
-        devnode = self.uinput.devnode
+        devnode = _safe_uinput_devnode(self.uinput)
         if devnode is None:
             return
 
@@ -177,7 +191,7 @@ class VGamepad(ABC):
         try:
             fd = os.open(devnode, os.O_RDWR | os.O_NONBLOCK)
         except OSError:
-            logger.warning("Could not open {} for force-feedback reading", devnode)
+            _log.warning("Could not open %s for force-feedback reading", devnode)
             return
         try:
             while not self._ff_stop.is_set():
@@ -199,7 +213,7 @@ class VGamepad(ABC):
                         try:
                             self._ff_callback(None, None, large_motor, small_motor, 0, None)
                         except Exception:
-                            logger.opt(exception=True).debug("FF callback raised")
+                            _log.debug("FF callback raised", exc_info=True)
                 elif ev_type == _EV_UINPUT:
                     if ev_code == _UI_FF_UPLOAD:
                         self._handle_ff_upload(fd, ev_value)
@@ -331,7 +345,7 @@ class VX360Gamepad(VGamepad):
 
         self.report = self.get_default_report()
         self.update()
-        logger.debug("VX360Gamepad created on {}", self.uinput.devnode)
+        _log.debug("VX360Gamepad created on %s", _safe_uinput_devnode(self.uinput) or "(devnode n/a)")
 
     def get_default_report(self) -> vcom.XUSB_REPORT:
         return vcom.XUSB_REPORT(
@@ -507,7 +521,7 @@ class VDS4Gamepad(VGamepad):
 
         self.report = self.get_default_report()
         self.update()
-        logger.debug("VDS4Gamepad created on {}", self.uinput.devnode)
+        _log.debug("VDS4Gamepad created on %s", _safe_uinput_devnode(self.uinput) or "(devnode n/a)")
 
     def get_default_report(self) -> vcom.DS4_REPORT:
         rep = vcom.DS4_REPORT(
