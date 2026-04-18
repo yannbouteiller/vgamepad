@@ -288,6 +288,25 @@ def _have_xinput() -> bool:
         return False
 
 
+def _xinput_wait_wbuttons(slot: int, bits: int, pressed: bool, timeout: float = 0.75) -> Optional[Any]:
+    """Poll XInput until *bits* are set (pressed) or cleared (!pressed) in wButtons."""
+    from _win_xinput import get_state
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        st = get_state(slot)
+        if st is None:
+            time.sleep(0.025)
+            continue
+        on = (st.Gamepad.wButtons & bits) != 0
+        if pressed and on:
+            return st
+        if not pressed and not on:
+            return st
+        time.sleep(0.025)
+    return None
+
+
 # ===========================================================================
 
 class TestVX360Gamepad(unittest.TestCase):
@@ -320,7 +339,9 @@ class TestVX360Gamepad(unittest.TestCase):
         if SYSTEM == "Windows":
             try:
                 from _win_xinput import find_slot, get_state
-                slot = find_slot()
+                slot = self.g.get_xinput_user_index()
+                if slot is None:
+                    slot = find_slot()
                 if slot is not None:
                     get_state(slot)  # ensure connection is live
                     self.g.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
@@ -366,8 +387,11 @@ class TestVX360Gamepad(unittest.TestCase):
         for btn in X360_ALL_BUTTONS_XINPUT:
             self.g.press_button(button=btn)
             self.g.update()
-            time.sleep(WAIT_S)
-            st = get_state(slot)
+            st = _xinput_wait_wbuttons(slot, int(btn.value), True)
+            self.assertIsNotNone(
+                st,
+                f"XInput never showed bit 0x{btn.value:04x} for {btn.name} (slot {slot})",
+            )
             assert st is not None
             log.debug("XInput button %s (0x%04x) -> wButtons=0x%04x", btn.name, btn.value, st.Gamepad.wButtons)
             self.assertTrue(
@@ -381,8 +405,11 @@ class TestVX360Gamepad(unittest.TestCase):
                 self.assertEqual(other_bits, 0, f"unexpected extra bits 0x{other_bits:04x} for {btn.name}")
             self.g.release_button(button=btn)
             self.g.update()
-            time.sleep(WAIT_S)
-            st = get_state(slot)
+            st = _xinput_wait_wbuttons(slot, int(btn.value), False)
+            self.assertIsNotNone(
+                st,
+                f"bit 0x{btn.value:04x} still set after release ({btn.name})",
+            )
             assert st is not None
             self.assertEqual(
                 st.Gamepad.wButtons & btn.value, 0,
@@ -664,7 +691,9 @@ class TestVX360Gamepad(unittest.TestCase):
 
     def tearDown(self) -> None:
         del self.g
-        pygame.quit()
+        # Windows XInput path never calls pygame.init(); pygame.quit() without init can crash SDL.
+        if pygame.get_init():
+            pygame.quit()
 
 
 if __name__ == "__main__":

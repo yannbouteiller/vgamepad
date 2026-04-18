@@ -5,7 +5,7 @@ from __future__ import annotations
 import ctypes
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from ctypes import CFUNCTYPE, c_ubyte, c_void_p
+from ctypes import CFUNCTYPE, byref, c_ubyte, c_ulong, c_void_p
 from typing import Any
 
 import vgamepad.win.vigem_client as vcli
@@ -165,6 +165,21 @@ class VX360Gamepad(VGamepad):
     def update(self) -> None:
         """Send the current report to the virtual device."""
         _check_err(vcli.vigem_target_x360_update(self._busp, self._devicep, self.report))
+
+    def get_xinput_user_index(self) -> int | None:
+        """Return the XInput user index (0--3) for this virtual device, or None if unavailable.
+
+        This matches ``dwUserIndex`` for ``XInputGetState`` / ``XInputGetStateEx``. Prefer this
+        over scanning the first connected controller when multiple gamepads are present.
+        """
+        idx = c_ulong()
+        err = vcli.vigem_target_x360_get_user_index(self._busp, self._devicep, byref(idx))
+        if err != vcom.VIGEM_ERRORS.VIGEM_ERROR_NONE:
+            return None
+        u = int(idx.value)
+        if u > 3:
+            return None
+        return u
 
     def register_notification(self, callback_function: Callable[..., Any]) -> None:
         """Register a callback for force feedback, LEDs, etc.

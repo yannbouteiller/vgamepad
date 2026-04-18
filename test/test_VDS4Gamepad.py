@@ -509,7 +509,8 @@ class TestVDS4Gamepad(unittest.TestCase):
 
     def tearDown(self) -> None:
         del self.g
-        pygame.quit()
+        if pygame.get_init():
+            pygame.quit()
 
 
 if __name__ == "__main__":
