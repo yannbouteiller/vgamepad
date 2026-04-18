@@ -46,7 +46,7 @@ Accept the licence agreement, click **Install**, allow the installer to modify y
 
 ### Linux
 
-See [Linux setup notes](readme/linux.md) for `uinput` permissions.
+See **[Linux: how to run](readme/linux.md#how-to-run-on-linux)** for system packages, `/dev/uinput` permissions, smoke tests, and development install.
 
 ```bash
 pip install vgamepad

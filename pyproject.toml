@@ -102,3 +102,16 @@ warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
 
+# Platform-conditional imports and ctypes/Linux-only APIs are noisy; keep strict checks on new code.
+[[tool.mypy.overrides]]
+module = "vgamepad"
+disable_error_code = ["assignment"]
+
+[[tool.mypy.overrides]]
+module = "vgamepad.win.virtual_gamepad"
+disable_error_code = ["no-any-return"]
+
+[[tool.mypy.overrides]]
+module = "vgamepad.lin.virtual_gamepad"
+disable_error_code = ["no-any-return", "attr-defined", "assignment"]
+

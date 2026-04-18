@@ -13,7 +13,7 @@ import threading
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from inspect import signature
-from typing import Any, ClassVar
+from typing import Any, BinaryIO, ClassVar
 
 import libevdev
 
@@ -31,6 +31,58 @@ def _safe_uinput_devnode(uinput: object) -> str | None:
     if dn is None:
         return None
     return str(dn)
+
+
+def _open_uinput_host_file() -> BinaryIO | None:
+    """Open ``/dev/uinput`` for passing into ``create_uinput_device(uinput_fd=...)``.
+
+    If this is ``None``, libevdev uses *managed* mode: it opens ``/dev/uinput`` internally
+    and :attr:`UinputDevice.fd` stays ``None`` — force-feedback ioctls cannot be handled.
+    """
+    for path in ("/dev/uinput", "/dev/input/uinput"):
+        try:
+            return open(path, "rb+", buffering=0)
+        except OSError:
+            continue
+    return None
+
+
+def _uinput_kernel_fd(uinput: object) -> int | None:
+    """Return the kernel fd used for the uinput device (same fd libevdev uses for FF ioctls).
+
+    With python-libevdev, the handle is usually ``Device._uinput.fd``, a :class:`~io.IOBase`
+    with a real ``fileno()`` — **not** the ``/dev/input/event*`` devnode opened a second time.
+    """
+    inner = getattr(uinput, "_uinput", None)
+    if inner is not None:
+        fo = getattr(inner, "fd", None)
+        if fo is not None:
+            fn = getattr(fo, "fileno", None)
+            if callable(fn):
+                with contextlib.suppress(Exception):
+                    n = int(fn())
+                    if n >= 0:
+                        return n
+
+    candidates: list[object] = []
+    for name in ("fd", "_fd", "_uinput_fd", "input_fd", "device_fd"):
+        with contextlib.suppress(Exception):
+            candidates.append(getattr(uinput, name, None))
+    fileno = getattr(uinput, "fileno", None)
+    if callable(fileno):
+        with contextlib.suppress(Exception):
+            candidates.append(fileno())
+    for c in candidates:
+        if isinstance(c, int) and c >= 0:
+            return c
+        if c is not None:
+            fn = getattr(c, "fileno", None)
+            if callable(fn):
+                with contextlib.suppress(Exception):
+                    n = int(fn())
+                    if n >= 0:
+                        return n
+    return None
 
 
 def _ioc(direction: int, ioc_type: int, nr: int, size: int) -> int:
@@ -121,6 +173,7 @@ class VGamepad(ABC):
     def __init__(self) -> None:
         self.device = libevdev.Device()
         self.device.name = "Virtual Gamepad"
+        self._uinput_host: BinaryIO | None = None
         self._ff_thread: threading.Thread | None = None
         self._ff_stop = threading.Event()
         self._ff_callback: Callable[..., Any] | None = None
@@ -153,9 +206,13 @@ class VGamepad(ABC):
     def register_notification(self, callback_function: Callable[..., Any]) -> None:
         """Register a callback for force-feedback notifications.
 
-        On Linux force feedback is implemented by reading ``FF_RUMBLE``
-        events from the uinput device.  The callback receives the same
-        signature as Windows:
+        On Linux, force feedback is implemented by reading ``FF_RUMBLE`` /
+        ``EV_UINPUT`` traffic on the **same** kernel file descriptor libevdev
+        uses for the uinput device.  Re-opening ``/dev/input/event*`` does not
+        work.  If python-libevdev does not expose that fd, notifications stay
+        disabled (see ``_uinput_kernel_fd``).
+
+        The callback receives the same signature as Windows:
 
             ``callback(client, target, large_motor, small_motor, led_number, user_data)``
 
@@ -174,25 +231,26 @@ class VGamepad(ABC):
         if self._ff_thread is not None:
             return
 
-        devnode = _safe_uinput_devnode(self.uinput)
-        if devnode is None:
+        fd = _uinput_kernel_fd(self.uinput)
+        if fd is None:
+            _log.warning(
+                "Force-feedback notifications are unavailable: could not resolve the uinput "
+                "kernel fd (devnode=%r). Open /dev/uinput and pass it to create_uinput_device, "
+                "or libevdev uses managed mode and hides the fd.",
+                _safe_uinput_devnode(self.uinput),
+            )
             return
 
         self._ff_stop.clear()
         self._ff_thread = threading.Thread(
             target=self._ff_reader_loop,
-            args=(devnode,),
+            args=(fd, False),
             daemon=True,
         )
         self._ff_thread.start()
 
-    def _ff_reader_loop(self, devnode: str) -> None:
+    def _ff_reader_loop(self, fd: int, own_fd: bool) -> None:
         """Background thread: reads EV_FF / EV_UINPUT events and dispatches rumble callbacks."""
-        try:
-            fd = os.open(devnode, os.O_RDWR | os.O_NONBLOCK)
-        except OSError:
-            _log.warning("Could not open %s for force-feedback reading", devnode)
-            return
         try:
             while not self._ff_stop.is_set():
                 ready, _, _ = select.select([fd], [], [], 0.1)
@@ -220,7 +278,9 @@ class VGamepad(ABC):
                     elif ev_code == _UI_FF_ERASE:
                         self._handle_ff_erase(fd, ev_value)
         finally:
-            os.close(fd)
+            if own_fd:
+                with contextlib.suppress(OSError):
+                    os.close(fd)
 
     def _handle_ff_upload(self, fd: int, request_id: int) -> None:
         """Handle a UI_FF_UPLOAD request from the kernel."""
@@ -268,6 +328,14 @@ class VGamepad(ABC):
         self._ff_stop.set()
         if self._ff_thread is not None:
             self._ff_thread.join(timeout=1.0)
+        with contextlib.suppress(Exception):
+            self.uinput = None
+        uih = getattr(self, "_uinput_host", None)
+        if uih is not None:
+            with contextlib.suppress(Exception):
+                uih.close()
+            with contextlib.suppress(Exception):
+                self._uinput_host = None
 
     @abstractmethod
     def target_alloc(self) -> Any:
@@ -341,7 +409,15 @@ class VX360Gamepad(VGamepad):
         self.device.enable(libevdev.EV_FF.FF_SINE)
         self.device.enable(libevdev.EV_FF.FF_GAIN)
 
-        self.uinput = self.device.create_uinput_device()
+        self._uinput_host = _open_uinput_host_file()
+        if self._uinput_host is not None:
+            self.uinput = self.device.create_uinput_device(uinput_fd=self._uinput_host)
+        else:
+            _log.warning(
+                "Could not open /dev/uinput (permissions?). Using libevdev managed mode; "
+                "force-feedback notifications will not work.",
+            )
+            self.uinput = self.device.create_uinput_device()
 
         self.report = self.get_default_report()
         self.update()
@@ -517,7 +593,15 @@ class VDS4Gamepad(VGamepad):
         self.device.enable(libevdev.EV_FF.FF_SINE)
         self.device.enable(libevdev.EV_FF.FF_GAIN)
 
-        self.uinput = self.device.create_uinput_device()
+        self._uinput_host = _open_uinput_host_file()
+        if self._uinput_host is not None:
+            self.uinput = self.device.create_uinput_device(uinput_fd=self._uinput_host)
+        else:
+            _log.warning(
+                "Could not open /dev/uinput (permissions?). Using libevdev managed mode; "
+                "force-feedback notifications will not work.",
+            )
+            self.uinput = self.device.create_uinput_device()
 
         self.report = self.get_default_report()
         self.update()
