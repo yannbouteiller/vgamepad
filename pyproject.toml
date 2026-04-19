@@ -1,5 +1,116 @@
 [build-system]
-requires = [
-    "setuptools",
-]
+requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "vgamepad"
+version = "0.1.4"
+description = "Virtual Xbox 360 and DualShock 4 gamepads in Python"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [
+    { name = "Yann Bouteiller" },
+]
+keywords = [
+    "virtual",
+    "gamepad",
+    "python",
+    "xbox",
+    "dualshock",
+    "controller",
+    "emulator",
+]
+dependencies = [
+    "libevdev>=0.11,<1; sys_platform == 'linux'",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/yannbouteiller/vgamepad"
+Repository = "https://github.com/yannbouteiller/vgamepad"
+Issues = "https://github.com/yannbouteiller/vgamepad/issues"
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pytest>=8.0",
+    "pygame>=2.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["vgamepad*"]
+
+# Required so Windows DLLs and MSI installers are present in wheels from PyPI.
+[tool.setuptools.package-data]
+vgamepad = [
+    "win/vigem/client/x64/ViGEmClient.dll",
+    "win/vigem/client/x86/ViGEmClient.dll",
+    "win/vigem/install/x64/ViGEmBusSetup_x64.msi",
+    "win/vigem/install/x86/ViGEmBusSetup_x86.msi",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific
+]
+ignore = [
+    "E501",    # line too long (handled by formatter)
+    "UP007",   # X | Y union syntax (needs 3.10+)
+    "RUF012",  # mutable ClassVar (false positives on ctypes _fields_)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["vgamepad"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+# Platform-conditional imports and ctypes/Linux-only APIs are noisy; keep strict checks on new code.
+[[tool.mypy.overrides]]
+module = "vgamepad"
+disable_error_code = ["assignment"]
+
+[[tool.mypy.overrides]]
+module = "vgamepad.win.virtual_gamepad"
+disable_error_code = ["no-any-return"]
+
+[[tool.mypy.overrides]]
+module = "vgamepad.lin.virtual_gamepad"
+disable_error_code = ["no-any-return", "attr-defined", "assignment"]
+

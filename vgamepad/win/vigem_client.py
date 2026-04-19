@@ -1,16 +1,14 @@
-"""
-Adapted from ViGEm source
-"""
+"""ViGEm client DLL bindings - adapted from ViGEm source."""
+
+from __future__ import annotations
 
 import platform
+from ctypes import CDLL, POINTER, c_bool, c_uint, c_ulong, c_ushort, c_void_p
 from pathlib import Path
-from ctypes import CDLL, POINTER, CFUNCTYPE, c_void_p, c_uint, c_ushort, c_ulong, c_bool, c_ubyte
-from vgamepad.win.vigem_commons import XUSB_REPORT, DS4_REPORT, DS4_REPORT_EX, VIGEM_TARGET_TYPE
 
-if platform.architecture()[0] == "64bit":
-    arch = "x64"
-else:
-    arch = "x86"
+from vgamepad.win.vigem_commons import DS4_REPORT, DS4_REPORT_EX, VIGEM_TARGET_TYPE, XUSB_REPORT
+
+arch = "x64" if platform.architecture()[0] == "64bit" else "x86"
 
 pathClient = Path(__file__).parent.absolute() / "vigem" / "client" / arch / "ViGEmClient.dll"
 vigemClient = CDLL(str(pathClient))
