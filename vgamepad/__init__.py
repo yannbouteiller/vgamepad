@@ -18,7 +18,7 @@ from vgamepad.win.vigem_commons import (
     XUSB_REPORT,
 )
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 _pkg_log = logging.getLogger("vgamepad")
 _pkg_log.addHandler(logging.NullHandler())

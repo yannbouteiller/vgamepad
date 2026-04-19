@@ -46,7 +46,7 @@ def ensure_vigembus_installed(*, _build_hook: bool = False) -> None:
         return
     if os.environ.get("VGAMEPAD_SKIP_VIGEMBUS_INSTALL", "").lower() == "true":
         return
-    if _build_hook and len(sys.argv) > 1 and sys.argv[1] in {"egg_info", "sdist"}:
+    if _build_hook and len(sys.argv) > 1 and sys.argv[1] not in {"install", "develop"}:
         return
 
     try:
@@ -56,7 +56,7 @@ def ensure_vigembus_installed(*, _build_hook: bool = False) -> None:
         ).lower()
         marker = "nefarius virtual gamepad emulation bus driver"
         idx = reg_output.find(marker)
-        if idx > 0:
+        if idx >= 0:
             ver_idx = reg_output[:idx].rfind("displayversion")
             if ver_idx != -1:
                 found_ver = reg_output[ver_idx:idx].split()[2]

@@ -39,10 +39,10 @@ On **Linux**, `vgamepad` uses `libevdev` to create virtual `uinput` devices.
 pip install vgamepad
 ```
 
-The ViGEmBus installer runs the first time you `import vgamepad` after a normal `pip install` from PyPI (wheels do not execute `setup.py` on your machine). It also runs during editable installs (`pip install -e .`) from the project’s `setup.py`.
+The ViGEmBus installer runs the first time you `import vgamepad` after a normal `pip install` from PyPI (wheels do not execute `setup.py` on your machine). When you install from a source checkout, it also runs during `pip install .` or `pip install -e .`, because those drive setuptools `install` / `develop` and the project’s `setup.py` hook. It does **not** run during packaging-only steps (for example building wheels or sdists), so CI stays non-interactive.
 Accept the licence agreement, click **Install**, allow the installer to modify your PC, wait for completion and click **Finish**.
 
-> To skip ViGEmBus installation, set `VGAMEPAD_SKIP_VIGEMBUS_INSTALL=true` before importing `vgamepad`, or before an editable install if you use `pip install -e .`.
+> To skip ViGEmBus installation, set `VGAMEPAD_SKIP_VIGEMBUS_INSTALL=true` before importing `vgamepad`, or before `pip install .` / `pip install -e .` if you install from source.
 
 ### Linux
 
@@ -59,6 +59,15 @@ pip install -e ".[dev]"
 ```
 
 This installs `ruff`, `mypy`, `pytest`, and `pygame` for linting, type-checking and testing.
+
+From the repository root, lint and type-check the package (settings live in `pyproject.toml`):
+
+```bash
+ruff check .
+mypy vgamepad
+```
+
+`ruff check` runs the configured rule set (pycodestyle, pyflakes, isort, pyupgrade, bugbear, and others). `mypy vgamepad` type-checks the `vgamepad` package using the `[tool.mypy]` options.
 
 ---
 
@@ -409,3 +418,5 @@ Please submit a pull request with your name and a short description of your cont
 
 - JumpyzZ (rumble and LEDs)
 - willRicard (Linux support)
+- Palamabron (full Linux support and related improvements)
+- piotrowski-j46 (full Linux support and related improvements)

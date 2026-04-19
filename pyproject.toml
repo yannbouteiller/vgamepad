@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vgamepad"
-version = "0.1.3"
+version = "0.1.4"
 description = "Virtual Xbox 360 and DualShock 4 gamepads in Python"
 readme = "README.md"
-license = "MIT"
-requires-python = ">=3.8"
+license = { text = "MIT" }
+requires-python = ">=3.9"
 authors = [
     { name = "Yann Bouteiller" },
 ]
@@ -34,7 +34,6 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -72,7 +71,7 @@ vgamepad = [
 ]
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py39"
 line-length = 120
 
 [tool.ruff.lint]

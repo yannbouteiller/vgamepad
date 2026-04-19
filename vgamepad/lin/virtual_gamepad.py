@@ -109,6 +109,9 @@ UI_END_FF_UPLOAD = _iow(_UINPUT_IOCTL_BASE, 201, _FF_UPLOAD_SIZE)
 UI_BEGIN_FF_ERASE = _iowr(_UINPUT_IOCTL_BASE, 202, _FF_ERASE_SIZE)
 UI_END_FF_ERASE = _iow(_UINPUT_IOCTL_BASE, 203, _FF_ERASE_SIZE)
 
+_INPUT_EVENT_FORMAT = "llHHi"
+_INPUT_EVENT_SIZE = struct.calcsize(_INPUT_EVENT_FORMAT)
+
 _EV_FF = 0x15
 _EV_UINPUT = 0x0101
 _FF_RUMBLE = 0x50
@@ -257,12 +260,12 @@ class VGamepad(ABC):
                 if not ready:
                     continue
                 try:
-                    data = os.read(fd, 24)
+                    data = os.read(fd, _INPUT_EVENT_SIZE)
                 except OSError:
                     continue
-                if len(data) < 24:
+                if len(data) < _INPUT_EVENT_SIZE:
                     continue
-                _sec, _usec, ev_type, ev_code, ev_value = struct.unpack("llHHi", data)
+                _sec, _usec, ev_type, ev_code, ev_value = struct.unpack(_INPUT_EVENT_FORMAT, data)
                 if ev_type == _EV_FF and ev_code in self._ff_effects:
                     strong, weak = self._ff_effects[ev_code]
                     large_motor = (strong * 255) // 65535 if strong else 0

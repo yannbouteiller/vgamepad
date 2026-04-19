@@ -2,8 +2,8 @@
 Windows-only post-install hook: detect and install the ViGEmBus driver.
 
 All project metadata lives in pyproject.toml. This file is only needed
-because the ViGEmBus MSI must be run as a side-effect of editable/sdist
-installs (``pip install -e .`` / building from source). Wheel installs
+because the ViGEmBus MSI must be run as a side-effect of source installs
+(``pip install .`` / ``pip install -e .``). Wheel installs
 from PyPI trigger the same logic on first ``import vgamepad``; see
 ``vgamepad.win.vigem_install``.
 
