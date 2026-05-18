@@ -1,12 +1,13 @@
-"""
-Adapted from ViGEm source
-"""
+"""ViGEm common types - adapted from the ViGEm C source headers."""
 
-from enum import IntFlag, IntEnum
-from ctypes import Structure, Union, c_short, c_ushort, c_ubyte
+from __future__ import annotations
 
+from collections.abc import Callable
+from ctypes import Structure, Union, c_short, c_ubyte, c_ushort
+from enum import IntEnum, IntFlag
+from inspect import signature
 
-c_byte = c_ubyte  # because BYTE is actually unsigned char
+c_byte = c_ubyte  # BYTE in C is unsigned char
 
 
 class VIGEM_TARGET_TYPE(IntFlag):
@@ -118,7 +119,7 @@ class DS4_REPORT(Structure):
 
 def DS4_SET_DPAD(report, dpad):
     report.wButtons &= ~0xF
-    report.wButtons |= dpad  # TODO cast USHORT?
+    report.wButtons |= dpad
 
 
 def DS4_REPORT_INIT(report):
@@ -199,4 +200,9 @@ class VIGEM_ERRORS(IntEnum):
     VIGEM_ERROR_NOT_SUPPORTED = 0xE0000016
 
 
-# TODO: add the missing types (C callback functions)
+def notification_callback_matches(candidate: Callable[..., object]) -> bool:
+    """True if *candidate* accepts the six rumble/LED parameters (name/annotations may differ)."""
+    try:
+        return len(signature(candidate).parameters) == 6
+    except (ValueError, TypeError):
+        return False
