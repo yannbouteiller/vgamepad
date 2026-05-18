@@ -1,12 +1,11 @@
-"""
-Adapted from ViGEm source
-"""
+"""ViGEm common types - adapted from the ViGEm C source headers."""
 
-from enum import IntFlag, IntEnum
-from ctypes import Structure, Union, c_short, c_ushort, c_ubyte
+from __future__ import annotations
 
+from ctypes import Structure, Union, c_short, c_ubyte, c_ushort
+from enum import IntEnum, IntFlag
 
-c_byte = c_ubyte  # because BYTE is actually unsigned char
+c_byte = c_ubyte  # BYTE in C is unsigned char
 
 
 class VIGEM_TARGET_TYPE(IntFlag):
@@ -118,7 +117,7 @@ class DS4_REPORT(Structure):
 
 def DS4_SET_DPAD(report, dpad):
     report.wButtons &= ~0xF
-    report.wButtons |= dpad  # TODO cast USHORT?
+    report.wButtons |= dpad
 
 
 def DS4_REPORT_INIT(report):
@@ -197,6 +196,3 @@ class VIGEM_ERRORS(IntEnum):
     VIGEM_ERROR_XUSB_USERINDEX_OUT_OF_RANGE = 0xE0000014
     VIGEM_ERROR_INVALID_PARAMETER = 0xE0000015
     VIGEM_ERROR_NOT_SUPPORTED = 0xE0000016
-
-
-# TODO: add the missing types (C callback functions)

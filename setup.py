@@ -1,95 +1,77 @@
-from setuptools import setup, find_packages
-import platform
-from pathlib import Path
+"""
+Windows-only post-install hook: detect and install the ViGEmBus driver.
+
+All project metadata lives in pyproject.toml.  This file is only needed
+because the ViGEmBus MSI must be run as a side-effect of `pip install`.
+On Linux this file is a no-op.
+"""
+
+from __future__ import annotations
+
 import os
+import platform
 import subprocess
 import sys
 import warnings
+from pathlib import Path
 
-
-assert platform.system() in ('Windows', 'Linux'), "vgamepad is only supported on Windows and Linux."
-
+from setuptools import setup
 
 VIGEMBUS_VERSION = "1.17.333.0"
-VGAMEPAD_VERSION = "0.1.3"
+
+_is_windows = platform.system() == "Windows"
 
 
-archstr = platform.machine()
-if archstr.endswith('64'):
-    arch = "x64"
-elif archstr.endswith('86'):
-    arch = "x86"
-else:
-    if platform.architecture()[0] == "64bit":
-        arch = "x64"
-    else:
-        arch = "x86"
-    warnings.warn(f"vgamepad could not determine your system architecture: \
-                  the vigembus installer will default to {arch}. If this is not your machine architecture, \
-                  please cancel the upcoming vigembus installation and install vigembus manually from \
-                  https://github.com/ViGEm/ViGEmBus/releases/tag/setup-v1.17.333")
+def _detect_arch() -> str:
+    machine = platform.machine()
+    if machine.endswith("64"):
+        return "x64"
+    if machine.endswith("86"):
+        return "x86"
+    arch = "x64" if platform.architecture()[0] == "64bit" else "x86"
+    warnings.warn(
+        f"Could not determine system architecture from '{machine}'; "
+        f"defaulting to {arch}.  If this is wrong, cancel the upcoming "
+        f"ViGEmBus installation and install it manually from "
+        f"https://github.com/ViGEm/ViGEmBus/releases/tag/setup-v{VIGEMBUS_VERSION}",
+        stacklevel=2,
+    )
+    return arch
 
-pathMsi = Path(__file__).parent.absolute() / "vgamepad" / "win" / "vigem" / "install" / arch / ("ViGEmBusSetup_" + arch + ".msi")
 
-is_windows = platform.system() == 'Windows'
+def _install_vigembus() -> None:
+    if not _is_windows:
+        return
+    if os.environ.get("VGAMEPAD_SKIP_VIGEMBUS_INSTALL", "").lower() == "true":
+        return
+    if len(sys.argv) > 1 and sys.argv[1] in {"egg_info", "sdist"}:
+        return
 
-if is_windows:
-    # Try to detect vigembus:
     try:
-        registry_str = subprocess.check_output(
-            ['reg', 'query', r'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', '/s'], text=True).lower()
-        j = registry_str.find('nefarius virtual gamepad emulation bus driver')
-        if j > 0:
-            vigem_installed = True
-            i = registry_str[:j].rfind('displayversion')
-            if i != -1:
-                vigem_version = registry_str[i:j].split()[2]
-                if vigem_version != VIGEMBUS_VERSION:
-                    warnings.warn(f"found vigembus version {vigem_version} on your system. Expected {VIGEMBUS_VERSION}.")
-        else:
-            vigem_installed = False
-    except Exception as e:
-        vigem_installed = False
-        warnings.warn(f"vgamepad could not run the vigembus detection on your system, \
-                      an exception has been caught while trying: \n{e}")
+        reg_output = subprocess.check_output(
+            ["reg", "query", r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", "/s"],
+            text=True,
+        ).lower()
+        marker = "nefarius virtual gamepad emulation bus driver"
+        idx = reg_output.find(marker)
+        if idx > 0:
+            ver_idx = reg_output[:idx].rfind("displayversion")
+            if ver_idx != -1:
+                found_ver = reg_output[ver_idx:idx].split()[2]
+                if found_ver != VIGEMBUS_VERSION:
+                    warnings.warn(
+                        f"Found ViGEmBus {found_ver}; expected {VIGEMBUS_VERSION}.",
+                        stacklevel=2,
+                    )
+            return  # already installed
+    except Exception as exc:
+        warnings.warn(f"ViGEmBus detection failed: {exc}", stacklevel=2)
 
-    # Prompt installation of the ViGEmBus driver (blocking call)
-    if sys.argv[1] != 'egg_info' and sys.argv[1] != 'sdist':
-        if not vigem_installed and not os.environ.get('VGAMEPAD_SKIP_VIGEMBUS_INSTALL', 'false') == 'true':
-            subprocess.call(['msiexec', '/i', '%s' % str(pathMsi)], shell=True)
+    arch = _detect_arch()
+    msi = Path(__file__).parent / "vgamepad" / "win" / "vigem" / "install" / arch / f"ViGEmBusSetup_{arch}.msi"
+    subprocess.call(["msiexec", "/i", str(msi)], shell=True)
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
 
-setup(
-    name='vgamepad',
-    packages=[package for package in find_packages()],
-    version=VGAMEPAD_VERSION,
-    license='MIT',
-    description='Virtual XBox360 and DualShock4 gamepads in python',
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    author='Yann Bouteiller',
-    url='https://github.com/yannbouteiller/vgamepad',
-    download_url=f'https://github.com/yannbouteiller/vgamepad/archive/refs/tags/v{VGAMEPAD_VERSION}.tar.gz',
-    keywords=['virtual', 'gamepad', 'python', 'xbox', 'dualshock', 'controller', 'emulator'],
-    install_requires=['libevdev~=0.11'] if not is_windows else [],
-    classifiers=[
-        'Development Status :: 4 - Beta',
-        'Intended Audience :: Developers',
-        'Intended Audience :: Education',
-        'Intended Audience :: Information Technology',
-        'Intended Audience :: Science/Research',
-        'Operating System :: Microsoft :: Windows',
-        'Programming Language :: Python',
-        'Topic :: Software Development :: Build Tools',
-        'Topic :: Games/Entertainment',
-        'Topic :: Scientific/Engineering :: Artificial Intelligence',
-    ],
-    package_data={'vgamepad': [
-        'win/vigem/client/x64/ViGEmClient.dll',
-        'win/vigem/client/x86/ViGEmClient.dll',
-        'win/vigem/install/x64/ViGEmBusSetup_x64.msi',
-        'win/vigem/install/x86/ViGEmBusSetup_x86.msi',
-    ] if is_windows else []}
-)
+_install_vigembus()
+
+setup()
