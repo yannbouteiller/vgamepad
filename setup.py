@@ -1,3 +1,17 @@
+"""
+Note for developers:
+
+vgamepad intentionally uses setup.py and not pyproject.toml.
+This is because pyproject.toml does not enable pre-installation hooks.
+We only distribute sdists (never wheels) on PyPI,
+so that setup.py is always called on installation.
+
+To build and upload on PyPI:
+
+python -m build --sdist
+twine upload dist/*.tar.gz
+"""
+
 from setuptools import setup, find_packages
 import platform
 from pathlib import Path
@@ -11,7 +25,7 @@ assert platform.system() in ('Windows', 'Linux'), "vgamepad is only supported on
 
 
 VIGEMBUS_VERSION = "1.17.333.0"
-VGAMEPAD_VERSION = "0.1.3"
+VGAMEPAD_VERSION = "0.1.4"
 
 
 archstr = platform.machine()
