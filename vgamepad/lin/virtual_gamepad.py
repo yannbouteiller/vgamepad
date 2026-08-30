@@ -2,10 +2,131 @@
 VGamepad API (Linux)
 """
 from abc import ABC, abstractmethod
-from time import sleep
-
 import libevdev
 import vgamepad.win.vigem_commons as vcom
+
+import contextlib
+import ctypes
+import fcntl
+import os
+import select
+import struct
+import threading
+import warnings
+from inspect import signature
+
+
+def _open_uinput_host_file():
+    for path in ("/dev/uinput", "/dev/input/uinput"):
+        try:
+            return open(path, "rb+", buffering=0)
+        except OSError:
+            continue
+    return None
+
+
+def _uinput_kernel_fd(uinput):
+    """Kernel fd for FF ioctls (Device._uinput.fd), not a second event devnode open."""
+    inner = getattr(uinput, "_uinput", None)
+    if inner is not None:
+        fo = getattr(inner, "fd", None)
+        if fo is not None:
+            fn = getattr(fo, "fileno", None)
+            if callable(fn):
+                with contextlib.suppress(Exception):
+                    n = int(fn())
+                    if n >= 0:
+                        return n
+    for name in ("fd", "_fd", "_uinput_fd", "input_fd", "device_fd"):
+        with contextlib.suppress(Exception):
+            c = getattr(uinput, name, None)
+            if isinstance(c, int) and c >= 0:
+                return c
+            if c is not None:
+                fn = getattr(c, "fileno", None)
+                if callable(fn):
+                    with contextlib.suppress(Exception):
+                        n = int(fn())
+                        if n >= 0:
+                            return n
+    fileno = getattr(uinput, "fileno", None)
+    if callable(fileno):
+        with contextlib.suppress(Exception):
+            n = int(fileno())
+            if n >= 0:
+                return n
+    return None
+
+
+def _ioc(direction, ioc_type, nr, size):
+    return (direction << 30) | (ioc_type << 8) | (nr << 0) | (size << 16)
+
+
+def _iowr(ioc_type, nr, size):
+    return _ioc(3, ioc_type, nr, size)
+
+
+def _iow(ioc_type, nr, size):
+    return _ioc(1, ioc_type, nr, size)
+
+
+_UINPUT_IOCTL_BASE = ord("U")
+_PTR_SIZE = ctypes.sizeof(ctypes.c_void_p)
+_FF_EFFECT_SIZE = 44 if _PTR_SIZE == 4 else 48
+_FF_UPLOAD_SIZE = 4 + 4 + _FF_EFFECT_SIZE + _FF_EFFECT_SIZE
+_FF_ERASE_SIZE = 12
+UI_BEGIN_FF_UPLOAD = _iowr(_UINPUT_IOCTL_BASE, 200, _FF_UPLOAD_SIZE)
+UI_END_FF_UPLOAD = _iow(_UINPUT_IOCTL_BASE, 201, _FF_UPLOAD_SIZE)
+UI_BEGIN_FF_ERASE = _iowr(_UINPUT_IOCTL_BASE, 202, _FF_ERASE_SIZE)
+UI_END_FF_ERASE = _iow(_UINPUT_IOCTL_BASE, 203, _FF_ERASE_SIZE)
+_EV_FF = 0x15
+_EV_UINPUT = 0x0101
+_FF_RUMBLE = 0x50
+_UI_FF_UPLOAD = 1
+_UI_FF_ERASE = 2
+_RUMBLE_STRONG_OFFSET = 14 if _PTR_SIZE == 4 else 16
+_RUMBLE_WEAK_OFFSET = _RUMBLE_STRONG_OFFSET + 2
+_EFFECT_ID_OFFSET = 2
+_INPUT_EVENT_FORMAT = "llHHi"
+_INPUT_EVENT_SIZE = struct.calcsize(_INPUT_EVENT_FORMAT)
+
+
+class _FFUpload(ctypes.Structure):
+    _fields_ = [
+        ("request_id", ctypes.c_uint32),
+        ("retval", ctypes.c_int32),
+        ("effect", ctypes.c_ubyte * _FF_EFFECT_SIZE),
+        ("old", ctypes.c_ubyte * _FF_EFFECT_SIZE),
+    ]
+
+
+class _FFErase(ctypes.Structure):
+    _fields_ = [
+        ("request_id", ctypes.c_uint32),
+        ("retval", ctypes.c_int32),
+        ("effect_id", ctypes.c_uint32),
+    ]
+
+
+def _parse_ff_rumble(raw_bytes):
+    if len(raw_bytes) < _RUMBLE_WEAK_OFFSET + 2:
+        return None, None
+    effect_type = struct.unpack_from("<H", raw_bytes, 0)[0]
+    if effect_type != _FF_RUMBLE:
+        return None, None
+    strong, weak = struct.unpack_from("<HH", raw_bytes, _RUMBLE_STRONG_OFFSET)
+    return strong, weak
+
+
+def _create_uinput(device, host_file):
+    if host_file is not None:
+        return device.create_uinput_device(uinput_fd=host_file)
+    warnings.warn(
+        "Could not open /dev/uinput (permissions?). Using libevdev managed mode; "
+        "force-feedback notifications will not work.",
+        stacklevel=2,
+    )
+    return device.create_uinput_device()
 
 
 class VGamepad(ABC):
@@ -13,6 +134,12 @@ class VGamepad(ABC):
     def __init__(self):
         self.device = libevdev.Device()
         self.device.name = 'Virtual Gamepad'
+
+        self._uinput_host = None
+        self._ff_thread = None
+        self._ff_stop = threading.Event()
+        self._ff_callback = None
+        self._ff_effects = {}
 
     def get_vid(self):
         """
@@ -50,6 +177,120 @@ class VGamepad(ABC):
         """
         return self.device.id.bustype
 
+
+    def register_notification(self, callback_function):
+        """
+        Register a callback for force-feedback (rumble) on Linux.
+        Uses the same uinput kernel fd as libevdev (do not re-open the event devnode).
+        """
+        if not vcom.notification_callback_matches(callback_function):
+            raise TypeError(
+                "Needed callback with six parameters "
+                "(client, target, large_motor, small_motor, led_number, user_data); "
+                "got: {}".format(signature(callback_function))
+            )
+        self._ff_callback = callback_function
+        if self._ff_thread is not None:
+            return
+        fd = _uinput_kernel_fd(self.uinput)
+        if fd is None:
+            warnings.warn(
+                "Force-feedback notifications unavailable (no uinput kernel fd).",
+                stacklevel=2,
+            )
+            return
+        self._ff_stop.clear()
+        self._ff_thread = threading.Thread(
+            target=self._ff_reader_loop, args=(fd, False), daemon=True
+        )
+        self._ff_thread.start()
+
+    def _ff_reader_loop(self, fd, own_fd):
+        try:
+            while not self._ff_stop.is_set():
+                ready, _, _ = select.select([fd], [], [], 0.1)
+                if not ready:
+                    continue
+                try:
+                    data = os.read(fd, _INPUT_EVENT_SIZE)
+                except OSError:
+                    continue
+                if len(data) < _INPUT_EVENT_SIZE:
+                    continue
+                _sec, _usec, ev_type, ev_code, ev_value = struct.unpack(
+                    _INPUT_EVENT_FORMAT, data
+                )
+                if ev_type == _EV_FF and ev_code in self._ff_effects:
+                    strong, weak = self._ff_effects[ev_code]
+                    large_motor = (strong * 255) // 65535 if strong else 0
+                    small_motor = (weak * 255) // 65535 if weak else 0
+                    if self._ff_callback:
+                        try:
+                            self._ff_callback(None, None, large_motor, small_motor, 0, None)
+                        except Exception:
+                            pass
+                elif ev_type == _EV_UINPUT:
+                    if ev_code == _UI_FF_UPLOAD:
+                        self._handle_ff_upload(fd, ev_value)
+                    elif ev_code == _UI_FF_ERASE:
+                        self._handle_ff_erase(fd, ev_value)
+        finally:
+            if own_fd:
+                with contextlib.suppress(OSError):
+                    os.close(fd)
+
+    def _handle_ff_upload(self, fd, request_id):
+        upload = _FFUpload()
+        upload.request_id = request_id
+        try:
+            fcntl.ioctl(fd, UI_BEGIN_FF_UPLOAD, upload)
+        except OSError:
+            return
+        effect_bytes = bytes(upload.effect)
+        strong, weak = _parse_ff_rumble(effect_bytes)
+        effect_id = struct.unpack_from("<h", effect_bytes, _EFFECT_ID_OFFSET)[0]
+        if effect_id < 0:
+            effect_id = len(self._ff_effects)
+            struct.pack_into("<h", upload.effect, _EFFECT_ID_OFFSET, effect_id)
+        if strong is not None:
+            self._ff_effects[effect_id] = (strong, weak)
+        upload.retval = 0
+        with contextlib.suppress(OSError):
+            fcntl.ioctl(fd, UI_END_FF_UPLOAD, upload)
+
+    def _handle_ff_erase(self, fd, request_id):
+        erase = _FFErase()
+        erase.request_id = request_id
+        try:
+            fcntl.ioctl(fd, UI_BEGIN_FF_ERASE, erase)
+        except OSError:
+            return
+        self._ff_effects.pop(erase.effect_id, None)
+        erase.retval = 0
+        with contextlib.suppress(OSError):
+            fcntl.ioctl(fd, UI_END_FF_ERASE, erase)
+
+    def unregister_notification(self):
+        self._ff_callback = None
+        self._ff_stop.set()
+        if self._ff_thread is not None:
+            self._ff_thread.join(timeout=2.0)
+            self._ff_thread = None
+        self._ff_effects.clear()
+
+    def __del__(self):
+        self._ff_stop.set()
+        if self._ff_thread is not None:
+            self._ff_thread.join(timeout=1.0)
+        with contextlib.suppress(Exception):
+            self.uinput = None
+        uih = getattr(self, "_uinput_host", None)
+        if uih is not None:
+            with contextlib.suppress(Exception):
+                uih.close()
+            with contextlib.suppress(Exception):
+                self._uinput_host = None
+
     @abstractmethod
     def target_alloc(self):
         """
@@ -65,9 +306,18 @@ class VX360Gamepad(VGamepad):
 
     def __init__(self):
         super().__init__()
-        self.device.name = 'Xbox 360 Controller'
+        self.device.name = 'Microsoft X-Box 360 pad'
 
-        # Enable buttons
+        # Spoof input_id so SDL2 generates the known GUID (030000005e0400008e02000014010000)
+        # and uses SDL_GameControllerDB instead of heuristic button ordering.
+        # This fixes BTN_MODE messing up button indices.
+        self.device.id = {
+            'bustype': 0x0003,  # BUS_USB
+            'vendor': 0x045E,   # Microsoft
+            'product': 0x028E,  # Xbox 360 Controller
+            'version': 0x0114,
+        }
+
         self.device.enable(libevdev.EV_KEY.BTN_SOUTH)
         self.device.enable(libevdev.EV_KEY.BTN_EAST)
         self.device.enable(libevdev.EV_KEY.BTN_NORTH)
@@ -79,7 +329,7 @@ class VX360Gamepad(VGamepad):
         self.device.enable(libevdev.EV_KEY.BTN_SELECT)
         self.device.enable(libevdev.EV_KEY.BTN_START)
 
-        # self.device.enable(libevdev.EV_KEY.BTN_MODE)  # FIXME: On Linux, this messes up the button order
+        self.device.enable(libevdev.EV_KEY.BTN_MODE)
 
         self.device.enable(libevdev.EV_KEY.BTN_THUMBL)
         self.device.enable(libevdev.EV_KEY.BTN_THUMBR)
@@ -117,7 +367,16 @@ class VX360Gamepad(VGamepad):
         self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1))
         self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1))
 
-        self.uinput = self.device.create_uinput_device()
+
+        self.device.enable(libevdev.EV_FF.FF_RUMBLE)
+        self.device.enable(libevdev.EV_FF.FF_PERIODIC)
+        self.device.enable(libevdev.EV_FF.FF_SQUARE)
+        self.device.enable(libevdev.EV_FF.FF_TRIANGLE)
+        self.device.enable(libevdev.EV_FF.FF_SINE)
+        self.device.enable(libevdev.EV_FF.FF_GAIN)
+
+        self._uinput_host = _open_uinput_host_file()
+        self.uinput = _create_uinput(self.device, self._uinput_host)
 
         self.report = self.get_default_report()
         self.update()
@@ -129,7 +388,7 @@ class VX360Gamepad(VGamepad):
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB: libevdev.EV_KEY.BTN_THUMBR,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER: libevdev.EV_KEY.BTN_TL,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER: libevdev.EV_KEY.BTN_TR,
-        # vcom.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE: libevdev.EV_KEY.BTN_MODE,  # FIXME: does not work properly on Linux
+        vcom.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE: libevdev.EV_KEY.BTN_MODE,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_A: libevdev.EV_KEY.BTN_SOUTH,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_B: libevdev.EV_KEY.BTN_EAST,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_X: libevdev.EV_KEY.BTN_NORTH,
@@ -288,6 +547,14 @@ class VDS4Gamepad(VGamepad):
     def __init__(self):
         super().__init__()
 
+        # Spoof input_id so SDL2 recognizes DS4 via SDL_GameControllerDB
+        self.device.id = {
+            'bustype': 0x0003,  # BUS_USB
+            'vendor': 0x054C,   # Sony
+            'product': 0x09CC,  # DualShock 4 v2
+            'version': 0x0100,
+        }
+
         self.dpad_direction = vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
 
         self.dpad_mapping = {
@@ -307,6 +574,8 @@ class VDS4Gamepad(VGamepad):
             vcom.DS4_BUTTONS.DS4_BUTTON_THUMB_LEFT: libevdev.EV_KEY.BTN_THUMBL,
             vcom.DS4_BUTTONS.DS4_BUTTON_OPTIONS: libevdev.EV_KEY.BTN_SELECT,
             vcom.DS4_BUTTONS.DS4_BUTTON_SHARE: libevdev.EV_KEY.BTN_START,
+            vcom.DS4_BUTTONS.DS4_BUTTON_TRIGGER_RIGHT: libevdev.EV_KEY.BTN_TR2,
+            vcom.DS4_BUTTONS.DS4_BUTTON_TRIGGER_LEFT: libevdev.EV_KEY.BTN_TL2,
             vcom.DS4_BUTTONS.DS4_BUTTON_SHOULDER_RIGHT: libevdev.EV_KEY.BTN_TR,
             vcom.DS4_BUTTONS.DS4_BUTTON_SHOULDER_LEFT: libevdev.EV_KEY.BTN_TL,
             vcom.DS4_BUTTONS.DS4_BUTTON_TRIANGLE: libevdev.EV_KEY.BTN_NORTH,
@@ -317,6 +586,7 @@ class VDS4Gamepad(VGamepad):
 
         self.DS4_SPECIAL_BUTTON_TO_EV_KEY = {
             vcom.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_PS: libevdev.EV_KEY.BTN_MODE,
+            vcom.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD: libevdev.EV_KEY.BTN_TOUCH,
         }
 
         # Note: physical DS4 controllers create 3 evdev files on Linux:
@@ -341,6 +611,7 @@ class VDS4Gamepad(VGamepad):
         self.device.enable(libevdev.EV_KEY.BTN_MODE)
         self.device.enable(libevdev.EV_KEY.BTN_THUMBL)
         self.device.enable(libevdev.EV_KEY.BTN_THUMBR)
+        self.device.enable(libevdev.EV_KEY.BTN_TOUCH)
 
         # Enable axes
         self.device.enable(libevdev.EV_ABS.ABS_X, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
@@ -354,7 +625,16 @@ class VDS4Gamepad(VGamepad):
         self.device.enable(libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=255))
         self.device.enable(libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=255))
 
-        self.uinput = self.device.create_uinput_device()
+
+        self.device.enable(libevdev.EV_FF.FF_RUMBLE)
+        self.device.enable(libevdev.EV_FF.FF_PERIODIC)
+        self.device.enable(libevdev.EV_FF.FF_SQUARE)
+        self.device.enable(libevdev.EV_FF.FF_TRIANGLE)
+        self.device.enable(libevdev.EV_FF.FF_SINE)
+        self.device.enable(libevdev.EV_FF.FF_GAIN)
+
+        self._uinput_host = _open_uinput_host_file()
+        self.uinput = _create_uinput(self.device, self._uinput_host)
 
         self.report = self.get_default_report()
         self.update()
@@ -527,6 +807,22 @@ class VDS4Gamepad(VGamepad):
         ])
 
         self.uinput.send_events([libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
+
+    def update_extended_report(self, extended_report):
+        """
+        Send DS4_REPORT_EX fields supported on Linux (no gyro/touchpad evdev events).
+        """
+        sub = extended_report.Report
+        self.report.bThumbLX = sub.bThumbLX
+        self.report.bThumbLY = sub.bThumbLY
+        self.report.bThumbRX = sub.bThumbRX
+        self.report.bThumbRY = sub.bThumbRY
+        self.report.wButtons = sub.wButtons
+        self.report.bSpecial = sub.bSpecial
+        self.report.bTriggerL = sub.bTriggerL
+        self.report.bTriggerR = sub.bTriggerR
+        self.dpad_direction = vcom.DS4_DPAD_DIRECTIONS(sub.wButtons & 0xF)
+        self.update()
 
     def target_alloc(self):
         return self.uinput

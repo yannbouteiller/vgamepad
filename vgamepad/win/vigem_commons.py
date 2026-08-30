@@ -3,6 +3,7 @@ Adapted from ViGEm source
 """
 
 from enum import IntFlag, IntEnum
+from inspect import signature
 from ctypes import Structure, Union, c_short, c_ushort, c_ubyte
 
 
@@ -200,3 +201,10 @@ class VIGEM_ERRORS(IntEnum):
 
 
 # TODO: add the missing types (C callback functions)
+
+def notification_callback_matches(candidate):
+    """True if *candidate* accepts six rumble/LED parameters (names may differ)."""
+    try:
+        return len(signature(candidate).parameters) == 6
+    except (ValueError, TypeError):
+        return False
