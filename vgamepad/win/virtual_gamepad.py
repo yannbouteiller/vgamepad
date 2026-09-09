@@ -5,6 +5,7 @@ VGamepad API (Windows)
 import vgamepad.win.vigem_commons as vcom
 import vgamepad.win.vigem_client as vcli
 import ctypes
+import time
 from ctypes import CFUNCTYPE, c_void_p, c_ubyte
 from abc import ABC, abstractmethod
 from inspect import signature  # Check if user defined callback function is legal
@@ -57,7 +58,8 @@ class VGamepad(ABC):
         self.CMPFUNC = CFUNCTYPE(None, c_void_p, c_void_p, c_ubyte, c_ubyte, c_ubyte, c_void_p)
         self.cmp_func = None
         vcli.vigem_target_add(self._busp, self._devicep)
-        assert vcli.vigem_target_is_attached(self._devicep), "The virtual device could not connect to ViGEmBus."
+        if not vcli.vigem_target_is_attached(self._devicep):
+            raise RuntimeError("The virtual device could not connect to ViGEmBus.")
 
     def __del__(self):
         vcli.vigem_target_remove(self._busp, self._devicep)
@@ -228,8 +230,8 @@ class VX360Gamepad(VGamepad):
 
         :param: a function of the form: my_func(client, target, large_motor, small_motor, led_number, user_data)
         """
-        if not signature(callback_function) == signature(dummy_callback):
-            raise TypeError("Needed callback function signature: {}, but got: {}".format(signature(dummy_callback), signature(callback_function)))
+        if not vcom.notification_callback_matches(callback_function):
+            raise TypeError("Needed callback function with six parameters (client, target, large_motor, small_motor, led_number, user_data); got: {}".format(signature(callback_function)))
         self.cmp_func = self.CMPFUNC(callback_function)  # keep its reference, otherwise the program will crash when a callback is made.
         check_err(vcli.vigem_target_x360_register_notification(self._busp, self._devicep, self.cmp_func, None))
 
@@ -251,6 +253,8 @@ class VDS4Gamepad(VGamepad):
     def __init__(self):
         super().__init__()
         self.report = self.get_default_report()
+        self._extended_report = vcom.DS4_REPORT_EX()
+        self._motion_enabled = False
         self.update()
 
     def get_default_report(self):
@@ -271,6 +275,8 @@ class VDS4Gamepad(VGamepad):
         Resets the report to the default state
         """
         self.report = self.get_default_report()
+        self._extended_report = vcom.DS4_REPORT_EX()
+        self._motion_enabled = False
 
     def press_button(self, button):
         """
@@ -383,11 +389,58 @@ class VDS4Gamepad(VGamepad):
         """
         vcom.DS4_SET_DPAD(self.report, direction)
 
+    def set_motion(self, gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z):
+        """
+        Sets raw DualShock 4 gyroscope and accelerometer readings.
+
+        Values must be signed 16-bit integers. Gyroscope readings use the DS4
+        scale of approximately 16 units per degree/second; accelerometer
+        readings use approximately 8192 units per g. Motion data is sent by
+        subsequent calls to update(). This feature is available on Windows.
+        """
+        values = {
+            "gyro_x": gyro_x,
+            "gyro_y": gyro_y,
+            "gyro_z": gyro_z,
+            "accel_x": accel_x,
+            "accel_y": accel_y,
+            "accel_z": accel_z,
+        }
+        for name, value in values.items():
+            if not isinstance(value, int):
+                raise TypeError("{} must be an integer".format(name))
+            if value < -32768 or value > 32767:
+                raise ValueError("{} must be between -32768 and 32767".format(name))
+
+        motion = self._extended_report.Report
+        motion.wGyroX = gyro_x
+        motion.wGyroY = gyro_y
+        motion.wGyroZ = gyro_z
+        motion.wAccelX = accel_x
+        motion.wAccelY = accel_y
+        motion.wAccelZ = accel_z
+        self._motion_enabled = True
+
+    def _sync_extended_report(self):
+        extended = self._extended_report.Report
+        for field in (
+                "bThumbLX", "bThumbLY", "bThumbRX", "bThumbRY",
+                "wButtons", "bSpecial", "bTriggerL", "bTriggerR"):
+            setattr(extended, field, getattr(self.report, field))
+
+        # A real DS4 advances this timestamp with its sensor samples. The unit
+        # is 16/3 microseconds and the 16-bit counter wraps naturally.
+        extended.wTimestamp = int(time.monotonic() * 187500) & 0xFFFF
+
     def update(self):
         """
         Sends the current report (i.e. commands) to the virtual device
         """
-        check_err(vcli.vigem_target_ds4_update(self._busp, self._devicep, self.report))
+        if self._motion_enabled:
+            self._sync_extended_report()
+            self.update_extended_report(self._extended_report)
+        else:
+            check_err(vcli.vigem_target_ds4_update(self._busp, self._devicep, self.report))
 
     def update_extended_report(self, extended_report):
         """
@@ -404,8 +457,8 @@ class VDS4Gamepad(VGamepad):
 
         :param: a function of the form: my_func(client, target, large_motor, small_motor, led_number, user_data)
         """
-        if not signature(callback_function) == signature(dummy_callback):
-            raise TypeError("Needed callback function signature: {}, but got: {}".format(signature(dummy_callback), signature(callback_function)))
+        if not vcom.notification_callback_matches(callback_function):
+            raise TypeError("Needed callback function with six parameters (client, target, large_motor, small_motor, led_number, user_data); got: {}".format(signature(callback_function)))
         self.cmp_func = self.CMPFUNC(callback_function)
         check_err(vcli.vigem_target_ds4_register_notification(self._busp, self._devicep, self.cmp_func, None))
 
