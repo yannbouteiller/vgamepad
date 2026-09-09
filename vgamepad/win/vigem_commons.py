@@ -134,16 +134,18 @@ class DS4_TOUCH(Structure):
     """
     DualShock 4 HID Touchpad structure
     """
+    _pack_ = 1
     _fields_ = [("bPacketCounter", c_byte),  # timestamp / packet counter associated with touch event
                 ("bIsUpTrackingNum1", c_byte),  # 0 means down; active low
                 # unique to each finger down, so for a lift and repress the value is incremented
                 ("bTouchData1", c_byte * 3),  # Two 12 bits values (for X and Y)
                 # middle byte holds last 4 bits of X and the starting
                 ("bIsUpTrackingNum2", c_byte),  # second touch data immediately follows data of first
-                ("bTouchData2", c_ushort * 3)]  # resolution is 1920x943
+                ("bTouchData2", c_byte * 3)]  # resolution is 1920x943
 
 
 class DS4_SUB_REPORT_EX(Structure):
+    _pack_ = 1
     _fields_ = [("bThumbLX", c_byte),
                 ("bThumbLY", c_byte),
                 ("bThumbRX", c_byte),

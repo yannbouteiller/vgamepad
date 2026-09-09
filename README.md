@@ -266,6 +266,22 @@ gamepad.update()
 
 * **Note:** Since version `0.1.0`, the DS4 Y axis on joysticks is inverted compared to the X360 API (native VIGEm behavior).
 
+Gyroscope and accelerometer (Windows only):
+```python
+# Stationary controller with gravity along its Z axis.
+gamepad.set_motion(
+    gyro_x=0, gyro_y=0, gyro_z=0,
+    accel_x=0, accel_y=0, accel_z=8192,
+)
+gamepad.update()
+```
+
+Motion values are signed 16-bit integers. Gyroscope readings use approximately
+16 units per degree/second, and accelerometer readings use approximately 8192
+units per g. `update()` sends motion together with the current buttons, triggers
+and joysticks. On Linux, `set_motion()` raises `NotImplementedError`, because
+uinput cannot expose a full DS4 HID motion report; that requires `/dev/uhid`.
+
 Directional pad (hat):
 ```python
 gamepad.directional_pad(direction=vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST)

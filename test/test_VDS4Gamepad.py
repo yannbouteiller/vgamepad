@@ -4,8 +4,10 @@ environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 import time
 import unittest
 import platform
+import ctypes
 
 import vgamepad as vg
+import vgamepad.win.vigem_commons as vcom
 
 # We use pygame to test vgamepad.
 # pygame must be installed to run these tests.
@@ -369,6 +371,29 @@ class TestVDS4Gamepad(unittest.TestCase):
             self.g.reset()
             self.g.update()
             time.sleep(WAIT_S)
+
+        # Motion axes are not exposed by pygame, so verify the generated report.
+
+        if SYSTEM == "Windows":
+            self.assertEqual(ctypes.sizeof(vcom.DS4_REPORT_EX), 63)
+            self.assertEqual(vcom.DS4_SUB_REPORT_EX.wGyroX.offset, 12)
+            self.assertEqual(vcom.DS4_SUB_REPORT_EX.wAccelX.offset, 18)
+
+            self.g.press_button(button=vg.DS4_BUTTONS.DS4_BUTTON_CROSS)
+            self.g.set_motion(
+                gyro_x=100, gyro_y=-200, gyro_z=300,
+                accel_x=-4096, accel_y=0, accel_z=8192,
+            )
+            self.g.update()
+
+            motion = self.g._extended_report.Report
+            self.assertEqual((motion.wGyroX, motion.wGyroY, motion.wGyroZ), (100, -200, 300))
+            self.assertEqual((motion.wAccelX, motion.wAccelY, motion.wAccelZ), (-4096, 0, 8192))
+            self.assertEqual(
+                motion.wButtons,
+                self.g.report.wButtons,
+                "extended updates must preserve the standard controller state",
+            )
 
     def tearDown(self):
         del self.g

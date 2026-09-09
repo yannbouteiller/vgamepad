@@ -824,5 +824,14 @@ class VDS4Gamepad(VGamepad):
         self.dpad_direction = vcom.DS4_DPAD_DIRECTIONS(sub.wButtons & 0xF)
         self.update()
 
+    def set_motion(self, gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z):
+        """
+        Motion emulation requires a full HID device, which uinput cannot expose.
+        """
+        raise NotImplementedError(
+            "DS4 motion emulation is only available on Windows; "
+            "Linux support requires a /dev/uhid implementation."
+        )
+
     def target_alloc(self):
         return self.uinput
