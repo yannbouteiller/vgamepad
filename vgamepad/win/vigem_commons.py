@@ -202,9 +202,26 @@ class VIGEM_ERRORS(IntEnum):
 
 # TODO: add the missing types (C callback functions)
 
-def notification_callback_matches(candidate):
-    """True if *candidate* accepts six rumble/LED parameters (names may differ)."""
-    try:
-        return len(signature(candidate).parameters) == 6
-    except (ValueError, TypeError):
-        return False
+def dummy_callback(client, target, large_motor, small_motor, led_number, user_data):
+    """
+    Pattern for callback functions to be registered as notifications
+
+    :param client: vigem bus ID
+    :param target: vigem device ID
+    :param large_motor: integer in [0, 255] representing the state of the large motor
+    :param small_motor: integer in [0, 255] representing the state of the small motor
+    :param led_number: integer in [0, 255] representing the state of the LED ring
+    :param user_data: placeholder, do not use
+    """
+    pass
+
+def check_notification_callback(candidate):
+    """
+    Returns a TypeError unless the signature of `candidate` matches that of `dummy_callback`.
+    """
+    if not signature(callback_function) == signature(dummy_callback):
+        raise TypeError(
+                "Needed callback with six parameters "
+                "(client, target, large_motor, small_motor, led_number, user_data); "
+                "got: {}".format(signature(callback_function))
+        )

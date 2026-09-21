@@ -15,20 +15,6 @@ def check_err(err):
         raise Exception(vcom.VIGEM_ERRORS(err).name)
 
 
-def dummy_callback(client, target, large_motor, small_motor, led_number, user_data):
-    """
-    Pattern for callback functions to be registered as notifications
-
-    :param client: vigem bus ID
-    :param target: vigem device ID
-    :param large_motor: integer in [0, 255] representing the state of the large motor
-    :param small_motor: integer in [0, 255] representing the state of the small motor
-    :param led_number: integer in [0, 255] representing the state of the LED ring
-    :param user_data: placeholder, do not use
-    """
-    pass
-
-
 class VBus:
     """
     Virtual USB bus (ViGEmBus)
@@ -229,8 +215,7 @@ class VX360Gamepad(VGamepad):
 
         :param: a function of the form: my_func(client, target, large_motor, small_motor, led_number, user_data)
         """
-        if not vcom.notification_callback_matches(callback_function):
-            raise TypeError("Needed callback function with six parameters (client, target, large_motor, small_motor, led_number, user_data); got: {}".format(signature(callback_function)))
+        vcom.check_notification_callback(callback_function)
         self.cmp_func = self.CMPFUNC(callback_function)  # keep its reference, otherwise the program will crash when a callback is made.
         check_err(vcli.vigem_target_x360_register_notification(self._busp, self._devicep, self.cmp_func, None))
 
@@ -405,8 +390,7 @@ class VDS4Gamepad(VGamepad):
 
         :param: a function of the form: my_func(client, target, large_motor, small_motor, led_number, user_data)
         """
-        if not vcom.notification_callback_matches(callback_function):
-            raise TypeError("Needed callback function with six parameters (client, target, large_motor, small_motor, led_number, user_data); got: {}".format(signature(callback_function)))
+        vcom.check_notification_callback(callback_function)
         self.cmp_func = self.CMPFUNC(callback_function)
         check_err(vcli.vigem_target_ds4_register_notification(self._busp, self._devicep, self.cmp_func, None))
 

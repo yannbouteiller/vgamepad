@@ -183,12 +183,7 @@ class VGamepad(ABC):
         Register a callback for force-feedback (rumble) on Linux.
         Uses the same uinput kernel fd as libevdev (do not re-open the event devnode).
         """
-        if not vcom.notification_callback_matches(callback_function):
-            raise TypeError(
-                "Needed callback with six parameters "
-                "(client, target, large_motor, small_motor, led_number, user_data); "
-                "got: {}".format(signature(callback_function))
-            )
+        vcom.check_notification_callback(callback_function)
         self._ff_callback = callback_function
         if self._ff_thread is not None:
             return
