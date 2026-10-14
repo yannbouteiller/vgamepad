@@ -57,7 +57,8 @@ class VGamepad(ABC):
         self.CMPFUNC = CFUNCTYPE(None, c_void_p, c_void_p, c_ubyte, c_ubyte, c_ubyte, c_void_p)
         self.cmp_func = None
         vcli.vigem_target_add(self._busp, self._devicep)
-        assert vcli.vigem_target_is_attached(self._devicep), "The virtual device could not connect to ViGEmBus."
+        if not vcli.vigem_target_is_attached(self._devicep):
+            raise RuntimeError("The virtual device could not connect to ViGEmBus.")
 
     def __del__(self):
         vcli.vigem_target_remove(self._busp, self._devicep)

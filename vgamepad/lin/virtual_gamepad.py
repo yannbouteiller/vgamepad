@@ -2,8 +2,6 @@
 VGamepad API (Linux)
 """
 from abc import ABC, abstractmethod
-from time import sleep
-
 import libevdev
 import vgamepad.win.vigem_commons as vcom
 
@@ -65,9 +63,18 @@ class VX360Gamepad(VGamepad):
 
     def __init__(self):
         super().__init__()
-        self.device.name = 'Xbox 360 Controller'
+        self.device.name = 'Microsoft X-Box 360 pad'
 
-        # Enable buttons
+        # Spoof input_id so SDL2 generates the known GUID (030000005e0400008e02000014010000)
+        # and uses SDL_GameControllerDB instead of heuristic button ordering.
+        # This fixes BTN_MODE messing up button indices.
+        self.device.id = {
+            'bustype': 0x0003,  # BUS_USB
+            'vendor': 0x045E,   # Microsoft
+            'product': 0x028E,  # Xbox 360 Controller
+            'version': 0x0114,
+        }
+
         self.device.enable(libevdev.EV_KEY.BTN_SOUTH)
         self.device.enable(libevdev.EV_KEY.BTN_EAST)
         self.device.enable(libevdev.EV_KEY.BTN_NORTH)
@@ -79,7 +86,7 @@ class VX360Gamepad(VGamepad):
         self.device.enable(libevdev.EV_KEY.BTN_SELECT)
         self.device.enable(libevdev.EV_KEY.BTN_START)
 
-        # self.device.enable(libevdev.EV_KEY.BTN_MODE)  # FIXME: On Linux, this messes up the button order
+        self.device.enable(libevdev.EV_KEY.BTN_MODE)
 
         self.device.enable(libevdev.EV_KEY.BTN_THUMBL)
         self.device.enable(libevdev.EV_KEY.BTN_THUMBR)
@@ -129,7 +136,7 @@ class VX360Gamepad(VGamepad):
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB: libevdev.EV_KEY.BTN_THUMBR,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER: libevdev.EV_KEY.BTN_TL,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER: libevdev.EV_KEY.BTN_TR,
-        # vcom.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE: libevdev.EV_KEY.BTN_MODE,  # FIXME: does not work properly on Linux
+        vcom.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE: libevdev.EV_KEY.BTN_MODE,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_A: libevdev.EV_KEY.BTN_SOUTH,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_B: libevdev.EV_KEY.BTN_EAST,
         vcom.XUSB_BUTTON.XUSB_GAMEPAD_X: libevdev.EV_KEY.BTN_NORTH,
@@ -288,6 +295,14 @@ class VDS4Gamepad(VGamepad):
     def __init__(self):
         super().__init__()
 
+        # Spoof input_id so SDL2 recognizes DS4 via SDL_GameControllerDB
+        self.device.id = {
+            'bustype': 0x0003,  # BUS_USB
+            'vendor': 0x054C,   # Sony
+            'product': 0x09CC,  # DualShock 4 v2
+            'version': 0x0100,
+        }
+
         self.dpad_direction = vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
 
         self.dpad_mapping = {
@@ -307,6 +322,8 @@ class VDS4Gamepad(VGamepad):
             vcom.DS4_BUTTONS.DS4_BUTTON_THUMB_LEFT: libevdev.EV_KEY.BTN_THUMBL,
             vcom.DS4_BUTTONS.DS4_BUTTON_OPTIONS: libevdev.EV_KEY.BTN_SELECT,
             vcom.DS4_BUTTONS.DS4_BUTTON_SHARE: libevdev.EV_KEY.BTN_START,
+            vcom.DS4_BUTTONS.DS4_BUTTON_TRIGGER_RIGHT: libevdev.EV_KEY.BTN_TR2,
+            vcom.DS4_BUTTONS.DS4_BUTTON_TRIGGER_LEFT: libevdev.EV_KEY.BTN_TL2,
             vcom.DS4_BUTTONS.DS4_BUTTON_SHOULDER_RIGHT: libevdev.EV_KEY.BTN_TR,
             vcom.DS4_BUTTONS.DS4_BUTTON_SHOULDER_LEFT: libevdev.EV_KEY.BTN_TL,
             vcom.DS4_BUTTONS.DS4_BUTTON_TRIANGLE: libevdev.EV_KEY.BTN_NORTH,
@@ -317,6 +334,7 @@ class VDS4Gamepad(VGamepad):
 
         self.DS4_SPECIAL_BUTTON_TO_EV_KEY = {
             vcom.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_PS: libevdev.EV_KEY.BTN_MODE,
+            vcom.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD: libevdev.EV_KEY.BTN_TOUCH,
         }
 
         # Note: physical DS4 controllers create 3 evdev files on Linux:
@@ -341,6 +359,7 @@ class VDS4Gamepad(VGamepad):
         self.device.enable(libevdev.EV_KEY.BTN_MODE)
         self.device.enable(libevdev.EV_KEY.BTN_THUMBL)
         self.device.enable(libevdev.EV_KEY.BTN_THUMBR)
+        self.device.enable(libevdev.EV_KEY.BTN_TOUCH)
 
         # Enable axes
         self.device.enable(libevdev.EV_ABS.ABS_X, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
