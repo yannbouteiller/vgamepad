@@ -289,7 +289,7 @@ class VX360Gamepad(VGamepad):
 
 class VDS4Gamepad(VGamepad):
     """
-    Virtual DuslaShock 4 gamepad
+    Virtual DualShock 4 gamepad
     """
 
     def __init__(self):
@@ -362,10 +362,10 @@ class VDS4Gamepad(VGamepad):
         self.device.enable(libevdev.EV_KEY.BTN_TOUCH)
 
         # Enable axes
-        self.device.enable(libevdev.EV_ABS.ABS_X, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
-        self.device.enable(libevdev.EV_ABS.ABS_Y, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
-        self.device.enable(libevdev.EV_ABS.ABS_RX, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
-        self.device.enable(libevdev.EV_ABS.ABS_RY, libevdev.InputAbsInfo(minimum=0, maximum=255, value=127))
+        self.device.enable(libevdev.EV_ABS.ABS_X, libevdev.InputAbsInfo(minimum=0, maximum=255, value=128))
+        self.device.enable(libevdev.EV_ABS.ABS_Y, libevdev.InputAbsInfo(minimum=0, maximum=255, value=128))
+        self.device.enable(libevdev.EV_ABS.ABS_RX, libevdev.InputAbsInfo(minimum=0, maximum=255, value=128))
+        self.device.enable(libevdev.EV_ABS.ABS_RY, libevdev.InputAbsInfo(minimum=0, maximum=255, value=128))
         self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1, value=0))
         self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1, value=0))
 
@@ -396,6 +396,7 @@ class VDS4Gamepad(VGamepad):
         Resets the report to the default state
         """
         self.report = self.get_default_report()
+        self.dpad_direction = vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
 
     def press_button(self, button):
         """
