@@ -3,7 +3,7 @@ Adapted from ViGEm source
 """
 
 from enum import IntFlag, IntEnum
-from ctypes import Structure, Union, c_short, c_ushort, c_ubyte
+from ctypes import Structure, Union, c_short, c_ushort, c_ubyte, sizeof
 
 
 c_byte = c_ubyte  # because BYTE is actually unsigned char
@@ -133,16 +133,20 @@ class DS4_TOUCH(Structure):
     """
     DualShock 4 HID Touchpad structure
     """
+    _layout_ = "ms"
+    _pack_ = 1
     _fields_ = [("bPacketCounter", c_byte),  # timestamp / packet counter associated with touch event
                 ("bIsUpTrackingNum1", c_byte),  # 0 means down; active low
                 # unique to each finger down, so for a lift and repress the value is incremented
                 ("bTouchData1", c_byte * 3),  # Two 12 bits values (for X and Y)
                 # middle byte holds last 4 bits of X and the starting
                 ("bIsUpTrackingNum2", c_byte),  # second touch data immediately follows data of first
-                ("bTouchData2", c_ushort * 3)]  # resolution is 1920x943
+                ("bTouchData2", c_byte * 3)]  # resolution is 1920x943
 
 
 class DS4_SUB_REPORT_EX(Structure):
+    _layout_ = "ms"
+    _pack_ = 1
     _fields_ = [("bThumbLX", c_byte),
                 ("bThumbLY", c_byte),
                 ("bThumbRX", c_byte),
@@ -172,6 +176,8 @@ class DS4_REPORT_EX(Union):
     """
     DualShock 4 v1 complete HID Input report
     """
+    _layout_ = "ms"
+    _pack_ = 1
     _fields_ = [("Report", DS4_SUB_REPORT_EX),
                 ("ReportBuffer", c_ubyte * 63)]
 
@@ -197,6 +203,11 @@ class VIGEM_ERRORS(IntEnum):
     VIGEM_ERROR_XUSB_USERINDEX_OUT_OF_RANGE = 0xE0000014
     VIGEM_ERROR_INVALID_PARAMETER = 0xE0000015
     VIGEM_ERROR_NOT_SUPPORTED = 0xE0000016
+
+
+# Double-check that the DS4 packed structures have the correct shape:
+assert sizeof(DS4_SUB_REPORT_EX) == 60
+assert sizeof(DS4_REPORT_EX) == 63
 
 
 # TODO: add the missing types (C callback functions)
