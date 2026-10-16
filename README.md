@@ -185,7 +185,7 @@ time.sleep(1.0)
 
 ### DualShock4 gamepad
 
-Using a virtual DS4 gamepad is similar to X360:
+Using a virtual DS4 gamepad is similar to X360, except `vgamepad` also exposes features that are exclusive to the DS4 gamepad:
 ```python
 import vgamepad as vg
 

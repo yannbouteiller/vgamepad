@@ -5,7 +5,7 @@ Adapted from ViGEm source
 import platform
 from pathlib import Path
 from ctypes import CDLL, POINTER, WINFUNCTYPE, c_void_p, c_uint, c_ushort, c_ulong, wintypes, c_ubyte
-from vgamepad.win.vigem_commons import XUSB_REPORT, DS4_REPORT, DS4_REPORT_EX, VIGEM_TARGET_TYPE
+from vgamepad.api import XUSB_REPORT, DS4_REPORT, DS4_REPORT_EX, VIGEM_TARGET_TYPE
 
 if platform.architecture()[0] == "64bit":
     arch = "x64"

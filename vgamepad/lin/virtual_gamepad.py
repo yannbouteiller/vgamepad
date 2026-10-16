@@ -1,9 +1,13 @@
 """
 VGamepad API (Linux)
+
+All API docstrings are defined in vgamepad.api
 """
+
 from abc import ABC, abstractmethod
 import libevdev
-import vgamepad.win.vigem_commons as vcom
+
+import vgamepad.api as api
 
 
 class VGamepad(ABC):
@@ -76,17 +80,17 @@ class VX360Gamepad(VGamepad):
         }
 
         self.XUSB_BUTTON_TO_EV_KEY = {
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_START: libevdev.EV_KEY.BTN_START,
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_BACK: libevdev.EV_KEY.BTN_SELECT,
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB: libevdev.EV_KEY.BTN_THUMBL,
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB: libevdev.EV_KEY.BTN_THUMBR,
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER: libevdev.EV_KEY.BTN_TL,
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER: libevdev.EV_KEY.BTN_TR,
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE: libevdev.EV_KEY.BTN_MODE,
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_A: libevdev.EV_KEY.BTN_SOUTH,
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_B: libevdev.EV_KEY.BTN_EAST,
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_X: libevdev.EV_KEY.BTN_NORTH,
-            vcom.XUSB_BUTTON.XUSB_GAMEPAD_Y: libevdev.EV_KEY.BTN_WEST,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_START: libevdev.EV_KEY.BTN_START,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_BACK: libevdev.EV_KEY.BTN_SELECT,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB: libevdev.EV_KEY.BTN_THUMBL,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB: libevdev.EV_KEY.BTN_THUMBR,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER: libevdev.EV_KEY.BTN_TL,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER: libevdev.EV_KEY.BTN_TR,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE: libevdev.EV_KEY.BTN_MODE,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_A: libevdev.EV_KEY.BTN_SOUTH,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_B: libevdev.EV_KEY.BTN_EAST,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_X: libevdev.EV_KEY.BTN_NORTH,
+            api.XUSB_BUTTON.XUSB_GAMEPAD_Y: libevdev.EV_KEY.BTN_WEST,
         }
 
         self.device.enable(libevdev.EV_KEY.BTN_SOUTH)
@@ -144,7 +148,7 @@ class VX360Gamepad(VGamepad):
         self.update()
 
     def get_default_report(self):
-        return vcom.XUSB_REPORT(wButtons=0,
+        return api.XUSB_REPORT(wButtons=0,
                                 bLeftTrigger=0,
                                 bRightTrigger=0,
                                 sThumbLX=0,
@@ -269,13 +273,13 @@ class VX360Gamepad(VGamepad):
         ])
 
         hat0x_value = bool(self.report.wButtons
-                           & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT) - bool(
+                           & api.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT) - bool(
                                self.report.wButtons
-                               & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
+                               & api.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
         hat0y_value = bool(self.report.wButtons
-                           & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN) - bool(
+                           & api.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN) - bool(
                                self.report.wButtons
-                               & vcom.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)
+                               & api.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)
         self.uinput.send_events([
             libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0X, value=hat0x_value),
             libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat0y_value)
@@ -303,38 +307,38 @@ class VDS4Gamepad(VGamepad):
             'version': 0x0100,
         }
 
-        self.dpad_direction = vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
+        self.dpad_direction = api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
 
         self.dpad_mapping = {
-            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE: (0, 0),
-            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST: (1, 0),
-            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTHEAST: (1, 1),
-            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTH: (0, 1),
-            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTHWEST: (-1, 1),
-            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST: (-1, 0),
-            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST: (-1, -1),
-            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH: (0, -1),
-            vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHEAST: (1, -1)
+            api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE: (0, 0),
+            api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST: (1, 0),
+            api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTHEAST: (1, 1),
+            api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTH: (0, 1),
+            api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_SOUTHWEST: (-1, 1),
+            api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST: (-1, 0),
+            api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST: (-1, -1),
+            api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH: (0, -1),
+            api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHEAST: (1, -1)
         }
 
         self.DS4_BUTTON_TO_EV_KEY = {
-            vcom.DS4_BUTTONS.DS4_BUTTON_THUMB_RIGHT: libevdev.EV_KEY.BTN_THUMBR,
-            vcom.DS4_BUTTONS.DS4_BUTTON_THUMB_LEFT: libevdev.EV_KEY.BTN_THUMBL,
-            vcom.DS4_BUTTONS.DS4_BUTTON_OPTIONS: libevdev.EV_KEY.BTN_START,
-            vcom.DS4_BUTTONS.DS4_BUTTON_SHARE: libevdev.EV_KEY.BTN_SELECT,
-            vcom.DS4_BUTTONS.DS4_BUTTON_TRIGGER_RIGHT: libevdev.EV_KEY.BTN_TR2,
-            vcom.DS4_BUTTONS.DS4_BUTTON_TRIGGER_LEFT: libevdev.EV_KEY.BTN_TL2,
-            vcom.DS4_BUTTONS.DS4_BUTTON_SHOULDER_RIGHT: libevdev.EV_KEY.BTN_TR,
-            vcom.DS4_BUTTONS.DS4_BUTTON_SHOULDER_LEFT: libevdev.EV_KEY.BTN_TL,
-            vcom.DS4_BUTTONS.DS4_BUTTON_TRIANGLE: libevdev.EV_KEY.BTN_NORTH,
-            vcom.DS4_BUTTONS.DS4_BUTTON_CIRCLE: libevdev.EV_KEY.BTN_EAST,
-            vcom.DS4_BUTTONS.DS4_BUTTON_CROSS: libevdev.EV_KEY.BTN_SOUTH,
-            vcom.DS4_BUTTONS.DS4_BUTTON_SQUARE: libevdev.EV_KEY.BTN_WEST,
+            api.DS4_BUTTONS.DS4_BUTTON_THUMB_RIGHT: libevdev.EV_KEY.BTN_THUMBR,
+            api.DS4_BUTTONS.DS4_BUTTON_THUMB_LEFT: libevdev.EV_KEY.BTN_THUMBL,
+            api.DS4_BUTTONS.DS4_BUTTON_OPTIONS: libevdev.EV_KEY.BTN_START,
+            api.DS4_BUTTONS.DS4_BUTTON_SHARE: libevdev.EV_KEY.BTN_SELECT,
+            api.DS4_BUTTONS.DS4_BUTTON_TRIGGER_RIGHT: libevdev.EV_KEY.BTN_TR2,
+            api.DS4_BUTTONS.DS4_BUTTON_TRIGGER_LEFT: libevdev.EV_KEY.BTN_TL2,
+            api.DS4_BUTTONS.DS4_BUTTON_SHOULDER_RIGHT: libevdev.EV_KEY.BTN_TR,
+            api.DS4_BUTTONS.DS4_BUTTON_SHOULDER_LEFT: libevdev.EV_KEY.BTN_TL,
+            api.DS4_BUTTONS.DS4_BUTTON_TRIANGLE: libevdev.EV_KEY.BTN_NORTH,
+            api.DS4_BUTTONS.DS4_BUTTON_CIRCLE: libevdev.EV_KEY.BTN_EAST,
+            api.DS4_BUTTONS.DS4_BUTTON_CROSS: libevdev.EV_KEY.BTN_SOUTH,
+            api.DS4_BUTTONS.DS4_BUTTON_SQUARE: libevdev.EV_KEY.BTN_WEST,
         }
 
         self.DS4_SPECIAL_BUTTON_TO_EV_KEY = {
-            vcom.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_PS: libevdev.EV_KEY.BTN_MODE,
-            vcom.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD: libevdev.EV_KEY.BTN_TOUCH,
+            api.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_PS: libevdev.EV_KEY.BTN_MODE,
+            api.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD: libevdev.EV_KEY.BTN_TOUCH,
         }
 
         # Note: physical DS4 controllers create 3 evdev files on Linux:
@@ -379,7 +383,7 @@ class VDS4Gamepad(VGamepad):
         self.update()
 
     def get_default_report(self):
-        rep = vcom.DS4_REPORT(
+        rep = api.DS4_REPORT(
             bThumbLX=0,
             bThumbLY=0,
             bThumbRX=0,
@@ -388,7 +392,7 @@ class VDS4Gamepad(VGamepad):
             bSpecial=0,
             bTriggerL=0,
             bTriggerR=0)
-        vcom.DS4_REPORT_INIT(rep)
+        api.DS4_REPORT_INIT(rep)
         return rep
 
     def reset(self):
@@ -396,7 +400,7 @@ class VDS4Gamepad(VGamepad):
         Resets the report to the default state
         """
         self.report = self.get_default_report()
-        self.dpad_direction = vcom.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
+        self.dpad_direction = api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
 
     def press_button(self, button):
         """
@@ -509,7 +513,7 @@ class VDS4Gamepad(VGamepad):
 
         :param: a DS4_DPAD_DIRECTIONS field, e.g. DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST
         """
-        vcom.DS4_SET_DPAD(self.report, direction)
+        api.DS4_SET_DPAD(self.report, direction)
         self.dpad_direction = direction
 
     def update(self):
