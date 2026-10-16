@@ -489,7 +489,7 @@ class VDS4Gamepad(VGamepad):
     def touchpad(self, finger1, finger2):
         """
         Sets the touchpad reading.
-        The touchpad can read un to two fingers.
+        The touchpad can read up to two fingers.
 
         :param: None (finger not touching) or (x, y) tuple of integers (finger coordinates).
             x between 0 and 1919 (0 = left), y between 0 and 941 (0 = top)
@@ -537,8 +537,6 @@ class VDS4Gamepad(VGamepad):
         This method can be used instead of the vgamepad high-level API for DS4.
 
         Description of each byte's role in DS4_REPORT_EX.Report:
-        
-        (TODO: this is a Claude-aided description, double-check it is correct and fill gaps)
 
         Sources:
         https://github.com/torvalds/linux/blob/master/drivers/hid/hid-playstation.c
