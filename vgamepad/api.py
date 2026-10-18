@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from inspect import signature
 from enum import IntFlag, IntEnum
 from ctypes import Structure, Union, c_short, c_ushort, c_ubyte, sizeof
+import time
 
 c_byte = c_ubyte  # because BYTE is actually unsigned char
 
@@ -258,20 +259,10 @@ def check_callback_signature(callback):
     return True
 
 
-class VX360Gamepad(ABC):
+class VGamepad(ABC):
     """
-    Virtual XBox360 gamepad
+    Common abstract methods
     """
-
-    def get_default_report(self):
-        return XUSB_REPORT(
-            wButtons=0,
-            bLeftTrigger=0,
-            bRightTrigger=0,
-            sThumbLX=0,
-            sThumbLY=0,
-            sThumbRX=0,
-            sThumbRY=0)
 
     @abstractmethod
     def get_vid(self):
@@ -300,113 +291,22 @@ class VX360Gamepad(ABC):
         :return: the type of the object (e.g. VIGEM_TARGET_TYPE.Xbox360Wired)
         """
         raise NotImplementedError
-    
+
+
+class VX360Gamepad(VGamepad):
+    """
+    Virtual XBox360 gamepad
+    """
+
     @abstractmethod
-    def reset(self):
+    def update_from_report(self, report):
         """
-        Resets the report to the default state
+        Sends the current report (i.e. commands) to the virtual device.
+
+        :param: a XUSB_REPORT
         """
         raise NotImplementedError
     
-    @abstractmethod
-    def press_button(self, button):
-        """
-        Presses a button (no effect if already pressed)
-        All possible buttons are in XUSB_BUTTON
-
-        :param: a XUSB_BUTTON field, e.g. XUSB_BUTTON.XUSB_GAMEPAD_X
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def release_button(self, button):
-        """
-        Releases a button (no effect if already released)
-        All possible buttons are in XUSB_BUTTON
-
-        :param: a XUSB_BUTTON field, e.g. XUSB_BUTTON.XUSB_GAMEPAD_X
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def left_trigger(self, value):
-        """
-        Sets the value of the left trigger
-
-        :param: integer between 0 and 255 (0 = trigger released)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def right_trigger(self, value):
-        """
-        Sets the value of the right trigger
-
-        :param: integer between 0 and 255 (0 = trigger released)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def left_trigger_float(self, value_float):
-        """
-        Sets the value of the left trigger
-
-        :param: float between 0.0 and 1.0 (0.0 = trigger released)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def right_trigger_float(self, value_float):
-        """
-        Sets the value of the right trigger
-
-        :param: float between 0.0 and 1.0 (0.0 = trigger released)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def left_joystick(self, x_value, y_value):
-        """
-        Sets the values of the X and Y axis for the left joystick
-
-        :param: integer between -32768 and 32767 (0 = neutral position)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def right_joystick(self, x_value, y_value):
-        """
-        Sets the values of the X and Y axis for the right joystick
-
-        :param: integer between -32768 and 32767 (0 = neutral position)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def left_joystick_float(self, x_value_float, y_value_float):
-        """
-        Sets the values of the X and Y axis for the left joystick
-
-        :param: float between -1.0 and 1.0 (0 = neutral position)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def right_joystick_float(self, x_value_float, y_value_float):
-        """
-        Sets the values of the X and Y axis for the right joystick
-
-        :param: float between -1.0 and 1.0 (0 = neutral position)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def update(self):
-        """
-        Sends the current report (i.e. commands) to the virtual device
-        """
-        raise NotImplementedError
-
     @abstractmethod
     def register_notification(self, callback_function):
         """
@@ -424,268 +324,137 @@ class VX360Gamepad(ABC):
         """
         raise NotImplementedError
 
-
-class VDS4Gamepad(ABC):
-    """
-    Virtual DualShock 4 gamepad
-    """
+    def __init__(self):
+        self.report = self.get_default_report()
+        self.update()
 
     def get_default_report(self):
-        rep = DS4_REPORT(
-            bThumbLX=0,
-            bThumbLY=0,
-            bThumbRX=0,
-            bThumbRY=0,
+        return XUSB_REPORT(
             wButtons=0,
-            bSpecial=0,
-            bTriggerL=0,
-            bTriggerR=0)
-        DS4_REPORT_INIT(rep)
-        return rep
-
-    def get_default_extended_report(self):
-        """
-        :return: a DS4_REPORT_EX in a neutral state (default ViGEmBus DS4 report)
-        """
-        rep = DS4_REPORT_EX()
-        DS4_REPORT_INIT(rep.Report)
-        rep.Report.bBatteryLvlSpecial = 0x1B  # USB cable connected, battery full
-        # Gravity (raw values of the ViGEmBus default report):
-        rep.Report.wAccelX = -647
-        rep.Report.wAccelY = 5147
-        rep.Report.wAccelZ = -5679
-        # No finger on the touchpad:
-        for touch in (rep.Report.sCurrentTouch, *rep.Report.sPreviousTouch):
-            touch.bIsUpTrackingNum1 = 0x80
-            touch.bIsUpTrackingNum2 = 0x80
-        return rep
-
-    @abstractmethod
-    def get_vid(self):
-        """
-        :return: the vendor ID of the virtual device
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_pid(self):
-        """
-        :return: the product ID of the virtual device
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_index(self):
-        """
-        :return: the internally used index of the target device
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_type(self):
-        """
-        :return: the type of the object (e.g. VIGEM_TARGET_TYPE.Xbox360Wired)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
+            bLeftTrigger=0,
+            bRightTrigger=0,
+            sThumbLX=0,
+            sThumbLY=0,
+            sThumbRX=0,
+            sThumbRY=0)
+    
     def reset(self):
         """
         Resets the report to the default state
         """
-        raise NotImplementedError
-
-    @abstractmethod
+        self.report = self.get_default_report()
+    
     def press_button(self, button):
         """
         Presses a button (no effect if already pressed)
-        All possible buttons are in DS4_BUTTONS
+        All possible buttons are in XUSB_BUTTON
 
-        :param: a DS4_BUTTONS field, e.g. DS4_BUTTONS.DS4_BUTTON_TRIANGLE
+        :param: a XUSB_BUTTON field, e.g. XUSB_BUTTON.XUSB_GAMEPAD_X
         """
-        raise NotImplementedError
+        self.report.wButtons = self.report.wButtons | button
 
-    @abstractmethod
     def release_button(self, button):
         """
         Releases a button (no effect if already released)
-        All possible buttons are in DS4_BUTTONS
+        All possible buttons are in XUSB_BUTTON
 
-        :param: a DS4_BUTTONS field, e.g. DS4_BUTTONS.DS4_BUTTON_TRIANGLE
+        :param: a XUSB_BUTTON field, e.g. XUSB_BUTTON.XUSB_GAMEPAD_X
         """
-        raise NotImplementedError
+        self.report.wButtons = self.report.wButtons & ~button
 
-    @abstractmethod
-    def press_special_button(self, special_button):
-        """
-        Presses a special button (no effect if already pressed)
-        All possible buttons are in DS4_SPECIAL_BUTTONS
-
-        :param: a DS4_SPECIAL_BUTTONS field, e.g. DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def release_special_button(self, special_button):
-        """
-        Releases a special button (no effect if already released)
-        All possible buttons are in DS4_SPECIAL_BUTTONS
-
-        :param: a DS4_SPECIAL_BUTTONS field, e.g. DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def left_trigger(self, value):
         """
         Sets the value of the left trigger
 
         :param: integer between 0 and 255 (0 = trigger released)
         """
-        raise NotImplementedError
+        self.report.bLeftTrigger = value
 
-    @abstractmethod
     def right_trigger(self, value):
         """
         Sets the value of the right trigger
 
         :param: integer between 0 and 255 (0 = trigger released)
         """
-        raise NotImplementedError
+        self.report.bRightTrigger = value
 
-    @abstractmethod
     def left_trigger_float(self, value_float):
         """
         Sets the value of the left trigger
 
         :param: float between 0.0 and 1.0 (0.0 = trigger released)
         """
-        raise NotImplementedError
+        self.left_trigger(round(value_float * 255))
 
-    @abstractmethod
     def right_trigger_float(self, value_float):
         """
         Sets the value of the right trigger
 
         :param: float between 0.0 and 1.0 (0.0 = trigger released)
         """
-        raise NotImplementedError
+        self.right_trigger(round(value_float * 255))
 
-    @abstractmethod
     def left_joystick(self, x_value, y_value):
         """
         Sets the values of the X and Y axis for the left joystick
 
-        :param: integer between 0 and 255 (128 = neutral position)
+        :param: integer between -32768 and 32767 (0 = neutral position)
         """
-        raise NotImplementedError
+        self.report.sThumbLX = x_value
+        self.report.sThumbLY = y_value
 
-    @abstractmethod
     def right_joystick(self, x_value, y_value):
         """
         Sets the values of the X and Y axis for the right joystick
 
-        :param: integer between 0 and 255 (128 = neutral position)
+        :param: integer between -32768 and 32767 (0 = neutral position)
         """
-        raise NotImplementedError
+        self.report.sThumbRX = x_value
+        self.report.sThumbRY = y_value
 
-    @abstractmethod
     def left_joystick_float(self, x_value_float, y_value_float):
         """
         Sets the values of the X and Y axis for the left joystick
 
         :param: float between -1.0 and 1.0 (0 = neutral position)
         """
-        raise NotImplementedError
+        self.left_joystick(round(x_value_float * 32767), round(y_value_float * 32767))
 
-    @abstractmethod
     def right_joystick_float(self, x_value_float, y_value_float):
         """
         Sets the values of the X and Y axis for the right joystick
 
         :param: float between -1.0 and 1.0 (0 = neutral position)
         """
-        raise NotImplementedError
-
-    @abstractmethod
-    def directional_pad(self, direction):
-        """
-        Sets the direction of the directional pad (hat)
-        All possible directions are in DS4_DPAD_DIRECTIONS
-
-        :param: a DS4_DPAD_DIRECTIONS field, e.g. DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def gyroscope(self, x_value, y_value, z_value):
-        """
-        Sets the 3D gyroscope reading.
-
-        :param: integer between -32768 and 32767 (0 = no torque)
-        """
-        raise NotImplementedError
+        self.right_joystick(round(x_value_float * 32767), round(y_value_float * 32767))
     
-    @abstractmethod
-    def accelerometer(self, x_value, y_value, z_value):
-        """
-        Sets the 3D accelerometer reading.
-
-        :param: integer between -32768 and 32767 (0 = no acceleration)
-        """
-        raise NotImplementedError
-    
-    @abstractmethod
-    def usb(self, connected):
-        """
-        Sets whether the USB cable is connected (default: True).
-
-        :param: bool
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def battery(self, battery_code):
-        """
-        Sets the battery status code (default: 11).
-
-        Codes meaning:
-            usb unplugged:
-                0 to 9 = 0-9%, 10-19%, ..., 90-99%
-                10 to 15 = 100%
-            usb connected:
-                0 to 9 = same as unplugged, charging
-                10 = 100%, charging
-                11 = full
-                14 = not charging (voltage or temperature error)
-                15 = charging error
-
-        :param: integer between 0 and 15
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def touchpad(self, finger1, finger2):
-        """
-        Sets the touchpad reading.
-        The touchpad can read up to two fingers.
-
-        :param: None (finger not touching) or (x, y) tuple of integers (finger coordinates).
-            x between 0 and 1919 (0 = left), y between 0 and 941 (0 = top)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def update(self):
         """
-        Sends the current report (i.e. commands) to the virtual device
+        Updates the virtual device.
+        """
+        self.update_from_report(self.report)
+
+
+class VDS4Gamepad(VGamepad):
+    """
+    Virtual DualShock 4 gamepad
+    """
+
+    @abstractmethod
+    def update_from_report(self, report):
+        """
+        Sends the current report (i.e. commands) to the virtual device.
+
+        :param: a DS4_REPORT
         """
         raise NotImplementedError
 
     @abstractmethod
-    def update_extended_report(self, extended_report):
+    def update_from_extended_report(self, extended_report):
         """
-        Enables using a DS4_REPORT_EX directly (advanced users only).
+        Sends the current extended report to the virtual device (advanced users only).
+
+        This enables using a DS4_REPORT_EX directly.
         This method can be used instead of the vgamepad high-level API for DS4.
 
         Description of each byte's role in DS4_REPORT_EX.Report:
@@ -765,3 +534,265 @@ class VDS4Gamepad(ABC):
         Unregisters a previously registered callback function.
         """
         raise NotImplementedError
+
+    def __init__(self):
+        self.report = self.get_default_report()
+        self.extended_report = self.get_default_extended_report()
+        self._use_extended_report = False
+        self._touch_tracking_num = 0  # incremented for each new finger contact on the touchpad
+        self.update()
+
+    def get_default_report(self):
+        rep = DS4_REPORT(
+            bThumbLX=0,
+            bThumbLY=0,
+            bThumbRX=0,
+            bThumbRY=0,
+            wButtons=0,
+            bSpecial=0,
+            bTriggerL=0,
+            bTriggerR=0)
+        DS4_REPORT_INIT(rep)
+        return rep
+
+    def get_default_extended_report(self):
+        """
+        :return: a DS4_REPORT_EX in a neutral state (default ViGEmBus DS4 report)
+        """
+        rep = DS4_REPORT_EX()
+        DS4_REPORT_INIT(rep.Report)
+        rep.Report.bBatteryLvlSpecial = 0x1B  # USB cable connected, battery full
+        # Gravity (raw values of the ViGEmBus default report):
+        rep.Report.wAccelX = -647
+        rep.Report.wAccelY = 5147
+        rep.Report.wAccelZ = -5679
+        # No finger on the touchpad:
+        for touch in (rep.Report.sCurrentTouch, *rep.Report.sPreviousTouch):
+            touch.bIsUpTrackingNum1 = 0x80
+            touch.bIsUpTrackingNum2 = 0x80
+        return rep
+
+    def reset(self):
+        """
+        Resets the report to the default state
+        """
+        self.report = self.get_default_report()
+        self.extended_report = self.get_default_extended_report()
+        self._use_extended_report = False
+
+    def press_button(self, button):
+        """
+        Presses a button (no effect if already pressed)
+        All possible buttons are in DS4_BUTTONS
+
+        :param: a DS4_BUTTONS field, e.g. DS4_BUTTONS.DS4_BUTTON_TRIANGLE
+        """
+        self.report.wButtons = self.report.wButtons | button
+
+    def release_button(self, button):
+        """
+        Releases a button (no effect if already released)
+        All possible buttons are in DS4_BUTTONS
+
+        :param: a DS4_BUTTONS field, e.g. DS4_BUTTONS.DS4_BUTTON_TRIANGLE
+        """
+        self.report.wButtons = self.report.wButtons & ~button
+
+    def press_special_button(self, special_button):
+        """
+        Presses a special button (no effect if already pressed)
+        All possible buttons are in DS4_SPECIAL_BUTTONS
+
+        :param: a DS4_SPECIAL_BUTTONS field, e.g. DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
+        """
+        self.report.bSpecial = self.report.bSpecial | special_button
+
+    def release_special_button(self, special_button):
+        """
+        Releases a special button (no effect if already released)
+        All possible buttons are in DS4_SPECIAL_BUTTONS
+
+        :param: a DS4_SPECIAL_BUTTONS field, e.g. DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
+        """
+        self.report.bSpecial = self.report.bSpecial & ~special_button
+
+    def left_trigger(self, value):
+        """
+        Sets the value of the left trigger
+
+        :param: integer between 0 and 255 (0 = trigger released)
+        """
+        self.report.bTriggerL = value
+
+    def right_trigger(self, value):
+        """
+        Sets the value of the right trigger
+
+        :param: integer between 0 and 255 (0 = trigger released)
+        """
+        self.report.bTriggerR = value
+
+    def left_trigger_float(self, value_float):
+        """
+        Sets the value of the left trigger
+
+        :param: float between 0.0 and 1.0 (0.0 = trigger released)
+        """
+        self.left_trigger(round(value_float * 255))
+
+    def right_trigger_float(self, value_float):
+        """
+        Sets the value of the right trigger
+
+        :param: float between 0.0 and 1.0 (0.0 = trigger released)
+        """
+        self.right_trigger(round(value_float * 255))
+
+    def left_joystick(self, x_value, y_value):
+        """
+        Sets the values of the X and Y axis for the left joystick
+
+        :param: integer between 0 and 255 (128 = neutral position)
+        """
+        self.report.bThumbLX = x_value
+        self.report.bThumbLY = y_value
+
+    def right_joystick(self, x_value, y_value):
+        """
+        Sets the values of the X and Y axis for the right joystick
+
+        :param: integer between 0 and 255 (128 = neutral position)
+        """
+        self.report.bThumbRX = x_value
+        self.report.bThumbRY = y_value
+
+    def left_joystick_float(self, x_value_float, y_value_float):
+        """
+        Sets the values of the X and Y axis for the left joystick
+
+        :param: float between -1.0 and 1.0 (0 = neutral position)
+        """
+        self.left_joystick(128 + round(x_value_float * 127), 128 + round(y_value_float * 127))
+
+    def right_joystick_float(self, x_value_float, y_value_float):
+        """
+        Sets the values of the X and Y axis for the right joystick
+
+        :param: float between -1.0 and 1.0 (0 = neutral position)
+        """
+        self.right_joystick(128 + round(x_value_float * 127), 128 + round(y_value_float * 127))
+
+    def directional_pad(self, direction):
+        """
+        Sets the direction of the directional pad (hat)
+        All possible directions are in DS4_DPAD_DIRECTIONS
+
+        :param: a DS4_DPAD_DIRECTIONS field, e.g. DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST
+        """
+        DS4_SET_DPAD(self.report, direction)
+
+    def gyroscope(self, x_value, y_value, z_value):
+        """
+        Sets the 3D gyroscope reading.
+
+        :param: integer between -32768 and 32767 (0 = no torque)
+        """
+        self.extended_report.Report.wGyroX = x_value
+        self.extended_report.Report.wGyroY = y_value
+        self.extended_report.Report.wGyroZ = z_value
+        self._use_extended_report = True
+    
+    def accelerometer(self, x_value, y_value, z_value):
+        """
+        Sets the 3D accelerometer reading.
+
+        :param: integer between -32768 and 32767 (0 = no acceleration)
+        """
+        self.extended_report.Report.wAccelX = x_value
+        self.extended_report.Report.wAccelY = y_value
+        self.extended_report.Report.wAccelZ = z_value
+        self._use_extended_report = True
+    
+    def usb(self, connected):
+        """
+        Sets whether the USB cable is connected (default: True).
+
+        :param: bool
+        """
+        if connected:
+            self.extended_report.Report.bBatteryLvlSpecial |= 0x10
+        else:
+            self.extended_report.Report.bBatteryLvlSpecial &= ~0x10
+        self._use_extended_report = True
+
+    def battery(self, battery_code):
+        """
+        Sets the battery status code (default: 11).
+
+        Codes meaning:
+            usb unplugged:
+                0 to 9 = 0-9%, 10-19%, ..., 90-99%
+                10 to 15 = 100%
+            usb connected:
+                0 to 9 = same as unplugged, charging
+                10 = 100%, charging
+                11 = full
+                14 = not charging (voltage or temperature error)
+                15 = charging error
+
+        :param: integer between 0 and 15
+        """
+        report = self.extended_report.Report
+        report.bBatteryLvlSpecial = (report.bBatteryLvlSpecial & ~0x0F) | (battery_code & 0x0F)
+        self._use_extended_report = True
+
+    def touchpad(self, finger1, finger2):
+        """
+        Sets the touchpad reading.
+        The touchpad can read up to two fingers.
+
+        :param: None (finger not touching) or (x, y) tuple of integers (finger coordinates).
+            x between 0 and 1919 (0 = left), y between 0 and 941 (0 = top)
+        """
+        report = self.extended_report.Report
+        touch = report.sCurrentTouch
+        for finger, attr_up, attr_data in ((finger1, "bIsUpTrackingNum1", "bTouchData1"),
+                                           (finger2, "bIsUpTrackingNum2", "bTouchData2")):
+            is_up = getattr(touch, attr_up)
+            if finger is None:
+                setattr(touch, attr_up, is_up | 0x80)  # lifted, keeps its last tracking number
+            else:
+                if is_up & 0x80:  # new contact
+                    setattr(touch, attr_up, self._touch_tracking_num)
+                    self._touch_tracking_num = (self._touch_tracking_num + 1) & 0x7F
+                x, y = finger
+                data = getattr(touch, attr_data)
+                data[0] = x & 0xFF
+                data[1] = ((x >> 8) & 0x0F) | ((y & 0x0F) << 4)
+                data[2] = (y >> 4) & 0xFF
+        touch.bPacketCounter = (touch.bPacketCounter + 1) & 0xFF
+        report.bTouchPacketsN = 1
+        self._use_extended_report = True
+    
+    def _sync_extended_report(self):
+        for field in (
+                "bThumbLX", "bThumbLY", "bThumbRX", "bThumbRY",
+                "wButtons", "bSpecial", "bTriggerL", "bTriggerR"):
+            setattr(self.extended_report.Report, field, getattr(self.report, field))
+        self.extended_report.Report.wTimestamp = int(time.monotonic() * 187500) & 0xFFFF
+
+    def update(self):
+        """
+        Updates the virtual device.
+        """
+        if self._use_extended_report:
+            self._sync_extended_report()
+            self.update_from_extended_report(self.extended_report)
+        else:
+            self.update_from_report(self.report)
+    
+    def update_extended_report(extended_report):
+        """
+        Deprecated alias for `VDS4Gamepad.update_from_extended_report` (backward compatibility with v0.1.X).
+        """
+        self.update_from_extended_report(extended_report)

@@ -404,6 +404,12 @@ _Note: only `ViGEmBus 1.17.333.0` is tested._
 
 ---
 
+## Testing:
+For X360: https://hardwaretester.com/gamepad
+For DS4: https://dualshock-tools.github.io
+
+---
+
 ## Contribute
 All contributions to this project are welcome.
 Please submit a PR with your name and a short description of your contribution in the Contributors list.
