@@ -118,7 +118,7 @@ class VX360Gamepad(VGamepad, api.VX360Gamepad):
                 value=bool(buttons & api.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN) - bool(buttons & api.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)),
             libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0),
         ]
-        self.uinput.send_events([libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
+        self.uinput.send_events(events)
     
     def register_notification(self, callback):
         raise NotImplementedError
