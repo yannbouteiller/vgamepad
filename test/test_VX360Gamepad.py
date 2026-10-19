@@ -31,10 +31,15 @@ X360_TEST_BUTTONS = [
     (vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, 5),
     (vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK, 6),
     (vg.XUSB_BUTTON.XUSB_GAMEPAD_START, 7),
+    ] + ([
     (vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB, 8),
     (vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB, 9),
-    # (vg.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE, 10),  # Does not exist on Linux
-    ]
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE, 10),
+    ] if SYSTEM == "Windows" else [
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE, 8),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB, 9),
+    (vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB, 10),
+    ])
 
 X360_TEST_HAT = [
     (vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP, (0, 1)),
@@ -65,12 +70,6 @@ X360_TEST_JOYSTICK_INT = [
     ((0, 32767), (0.0, -1.0)),
     ((16383, -32768), (0.5, 1.0)),
     ((32767, -16384), (1.0, 0.5)),
-    ] if SYSTEM == "Windows" else [
-    ((-32768, 0), (-1.0, 0.0)),
-    ((-16384, 16383), (-0.5, 0.5)),
-    ((0, 32767), (0.0, 1.0)),
-    ((16383, -32768), (0.5, -1.0)),
-    ((32767, -16384), (1.0, -0.5)),
     ]
 
 X360_TEST_JOYSTICK_FLOAT = [
@@ -79,12 +78,6 @@ X360_TEST_JOYSTICK_FLOAT = [
     ((0.0, 1.0), (0.0, -1.0)),
     ((0.5, -1.0), (0.5, 1.0)),
     ((1.0, -0.5), (1.0, 0.5)),
-    ] if SYSTEM == "Windows" else [
-    ((-1.0, 0.0), (-1.0, 0.0)),
-    ((-0.5, 0.5), (-0.5, 0.5)),
-    ((0.0, 1.0), (0.0, 1.0)),
-    ((0.5, -1.0), (0.5, -1.0)),
-    ((1.0, -0.5), (1.0, -0.5)),
     ]
 
 
@@ -129,10 +122,10 @@ class TestVX360Gamepad(unittest.TestCase):
         nb_balls = j.get_numballs()
         nb_buttons = j.get_numbuttons()
         nb_hats = j.get_numhats()
-        self.assertTrue(name == "Xbox 360 Controller")
+        self.assertEqual(name, "Xbox 360 Controller")
         self.assertEqual(nb_axes, 6)
         self.assertEqual(nb_balls, 0)
-        self.assertEqual(nb_buttons, 11 if SYSTEM == "Windows" else 10)  # No GUIDE button on Linux
+        self.assertEqual(nb_buttons, 11)
         self.assertEqual(nb_hats, 1)
 
         # Check that buttons are correct:

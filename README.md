@@ -185,7 +185,7 @@ time.sleep(1.0)
 
 ### DualShock4 gamepad
 
-Using a virtual DS4 gamepad is similar to X360:
+Using a virtual DS4 gamepad is similar to X360, except `vgamepad` also exposes features that are exclusive to the DS4 gamepad:
 ```python
 import vgamepad as vg
 
@@ -401,6 +401,12 @@ See [virtual_gamepad.py](https://github.com/yannbouteiller/vgamepad/blob/main/vg
 To skip installation of the `ViGEmBus` driver during `vgamepad` installation on Windows, set the `VGAMEPAD_SKIP_VIGEMBUS_INSTALL` environment variable to `true` before installing `vgamepad`.
 
 _Note: only `ViGEmBus 1.17.333.0` is tested._
+
+---
+
+## Testing:
+For X360: https://hardwaretester.com/gamepad
+For DS4: https://dualshock-tools.github.io
 
 ---
 
