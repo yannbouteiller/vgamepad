@@ -17,7 +17,7 @@ import pygame
 WAIT_S = 0.1
 SYSTEM = platform.system()
 
-DS4_NAME = "PS4 Controller" if SYSTEM == "Windows" else "Sony Interactive Entertainment Wireless Controller"
+DS4_NAME = "PS4 Controller"
 DS4_NB_BUTTONS = 16 if SYSTEM == "Windows" else 13
 DS4_NB_HATS = 0 if SYSTEM == "Windows" else 1
 
@@ -43,8 +43,8 @@ DS4_TEST_BUTTONS = [
     (vg.DS4_BUTTONS.DS4_BUTTON_CIRCLE, 1),
     (vg.DS4_BUTTONS.DS4_BUTTON_SQUARE, 3),
     (vg.DS4_BUTTONS.DS4_BUTTON_TRIANGLE, 2),
-    (vg.DS4_BUTTONS.DS4_BUTTON_SHARE, 9),
-    (vg.DS4_BUTTONS.DS4_BUTTON_OPTIONS, 8),
+    (vg.DS4_BUTTONS.DS4_BUTTON_SHARE, 8),
+    (vg.DS4_BUTTONS.DS4_BUTTON_OPTIONS, 9),
     (vg.DS4_BUTTONS.DS4_BUTTON_THUMB_LEFT, 11),
     (vg.DS4_BUTTONS.DS4_BUTTON_THUMB_RIGHT, 12),
     (vg.DS4_BUTTONS.DS4_BUTTON_SHOULDER_LEFT, 4),
@@ -56,7 +56,6 @@ DS4_TEST_SPECIAL_BUTTONS = [
     (vg.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD, 15),
     ] if SYSTEM == "Windows" else [
     (vg.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_PS, 10),
-    # (vg.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD, 15),  # not implemented on Linux
     ]
 
 DS4_TEST_DIRECTIONAL_PAD = [  # On Windows, pygame detects the directional pad as 4 buttons
@@ -69,7 +68,7 @@ DS4_TEST_DIRECTIONAL_PAD = [  # On Windows, pygame detects the directional pad a
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_EAST, (0, 0, 0, 1)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHEAST, (1, 0, 0, 1)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTH, (1, 0, 0, 0)),
-    ] if SYSTEM == "Windows" else [  # FIXME: On Linux, pygame detects the directional pad as a hat with 2 axes
+    ] if SYSTEM == "Windows" else [  # On Linux, the directional pad is a hat
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE, (0, 0)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST, (-1, 1)),
     (vg.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_WEST, (-1, 0)),
@@ -119,6 +118,7 @@ class TestVDS4Gamepad(unittest.TestCase):
     def setUp(self):
         print(f"Setting up VDS4Gamepad")
 
+        self.extended = False
         self.g = vg.VDS4Gamepad()
         # press a button to wake the device up
         self.g.press_button(button=vg.DS4_BUTTONS.DS4_BUTTON_CROSS)
@@ -142,7 +142,22 @@ class TestVDS4Gamepad(unittest.TestCase):
         pygame.init()
         self.joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
 
+    def _reset(self):
+        self.g.reset()
+        if self.extended:
+            self.g.gyroscope(0, 0, 0)
+
     def test_all(self):
+        self._test_all()
+
+    def test_all_extended(self):
+        self.extended = True
+        self._reset()
+        self.g.update()
+        time.sleep(WAIT_S)
+        self._test_all()
+
+    def _test_all(self):
         self.assertTrue(SYSTEM in ("Windows", "Linux"))
 
         # Check that only one gamepad is connected:
@@ -155,7 +170,7 @@ class TestVDS4Gamepad(unittest.TestCase):
         nb_balls = j.get_numballs()
         nb_buttons = j.get_numbuttons()
         nb_hats = j.get_numhats()
-        self.assertTrue(name == DS4_NAME)
+        self.assertEqual(name, DS4_NAME)
         self.assertEqual(nb_axes, 6)
         self.assertEqual(nb_balls, 0)
         self.assertEqual(nb_buttons, DS4_NB_BUTTONS)
@@ -226,7 +241,7 @@ class TestVDS4Gamepad(unittest.TestCase):
             else:
                 self.assertEqual(j.get_hat(0), j_value)
 
-            self.g.reset()
+            self._reset()
             self.g.update()
             time.sleep(WAIT_S)
 
@@ -245,7 +260,7 @@ class TestVDS4Gamepad(unittest.TestCase):
             print(f"Testing: {v_value, j_value}")
             self.assertAlmostEqual(j.get_axis(DS4_LEFT_TRIGGER), j_value, delta=0.01)
 
-            self.g.reset()
+            self._reset()
             self.g.update()
             time.sleep(WAIT_S)
 
@@ -260,7 +275,7 @@ class TestVDS4Gamepad(unittest.TestCase):
             print(f"Testing: {v_value, j_value}")
             self.assertAlmostEqual(j.get_axis(DS4_RIGHT_TRIGGER), j_value, delta=0.01)
 
-            self.g.reset()
+            self._reset()
             self.g.update()
             time.sleep(WAIT_S)
 
@@ -279,7 +294,7 @@ class TestVDS4Gamepad(unittest.TestCase):
             print(f"Testing: {v_value, j_value}")
             self.assertAlmostEqual(j.get_axis(DS4_LEFT_TRIGGER), j_value, delta=0.01)
 
-            self.g.reset()
+            self._reset()
             self.g.update()
             time.sleep(WAIT_S)
 
@@ -294,7 +309,7 @@ class TestVDS4Gamepad(unittest.TestCase):
             print(f"Testing: {v_value, j_value}")
             self.assertAlmostEqual(j.get_axis(DS4_RIGHT_TRIGGER), j_value, delta=0.01)
 
-            self.g.reset()
+            self._reset()
             self.g.update()
             time.sleep(WAIT_S)
 
@@ -314,7 +329,7 @@ class TestVDS4Gamepad(unittest.TestCase):
             self.assertAlmostEqual(j.get_axis(DS4_LEFT_JOYSTICK[0]), j_value[0], delta=0.01)
             self.assertAlmostEqual(j.get_axis(DS4_LEFT_JOYSTICK[1]), j_value[1], delta=0.01)
 
-            self.g.reset()
+            self._reset()
             self.g.update()
             time.sleep(WAIT_S)
 
@@ -330,7 +345,7 @@ class TestVDS4Gamepad(unittest.TestCase):
             self.assertAlmostEqual(j.get_axis(DS4_RIGHT_JOYSTICK[0]), j_value[0], delta=0.01)
             self.assertAlmostEqual(j.get_axis(DS4_RIGHT_JOYSTICK[1]), j_value[1], delta=0.01)
 
-            self.g.reset()
+            self._reset()
             self.g.update()
             time.sleep(WAIT_S)
 
@@ -350,7 +365,7 @@ class TestVDS4Gamepad(unittest.TestCase):
             self.assertAlmostEqual(j.get_axis(DS4_LEFT_JOYSTICK[0]), j_value[0], delta=0.01)
             self.assertAlmostEqual(j.get_axis(DS4_LEFT_JOYSTICK[1]), j_value[1], delta=0.01)
 
-            self.g.reset()
+            self._reset()
             self.g.update()
             time.sleep(WAIT_S)
 
@@ -366,7 +381,7 @@ class TestVDS4Gamepad(unittest.TestCase):
             self.assertAlmostEqual(j.get_axis(DS4_RIGHT_JOYSTICK[0]), j_value[0], delta=0.01)
             self.assertAlmostEqual(j.get_axis(DS4_RIGHT_JOYSTICK[1]), j_value[1], delta=0.01)
 
-            self.g.reset()
+            self._reset()
             self.g.update()
             time.sleep(WAIT_S)
 

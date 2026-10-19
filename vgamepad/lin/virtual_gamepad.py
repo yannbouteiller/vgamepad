@@ -4,7 +4,7 @@ VGamepad API (Linux)
 All API docstrings are defined in vgamepad.api
 """
 
-from abc import ABC, abstractmethod
+from abc import ABC
 import libevdev
 import itertools
 
@@ -12,6 +12,16 @@ import vgamepad.api as api
 
 
 _INDEX_COUNTER = itertools.count(1)
+_VIGEMBUS_DEFAULT_REPORT = bytes([
+    0x82, 0x7F, 0x7E, 0x80, 0x08, 0x00, 0x58,
+    0x00, 0x00, 0xFD, 0x63, 0x06, 0x03, 0x00, 0xFE,
+    0xFF, 0xFC, 0xFF, 0x79, 0xFD, 0x1B, 0x14, 0xD1,
+    0xE9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1B, 0x00,
+    0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x80,
+    0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00,
+    0x80, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00,
+    0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00,
+])
 
 
 class VGamepad(ABC):
@@ -24,15 +34,17 @@ class VGamepad(ABC):
         self._index = next(_INDEX_COUNTER)
         self.uinput = None
     
-    def _create_uinput_device(self):
+    def _create_uinput_device(self, device=None):
         """
-        Must be called after self.device is fully configured
+        Overrides the device VID and PID and returns its uinput.
+        Must be called after self.device is fully configured.
         """
+        device = self.device if device is None else device
         if self._vid is not None:
-            self.device.id = {'vendor': self._vid}
+            device.id = {'vendor': self._vid}
         if self._pid is not None:
-            self.device.id = {'product': self._pid}
-        self.uinput = self.device.create_uinput_device()
+            device.id = {'product': self._pid}
+        return device.create_uinput_device()
 
     def get_vid(self):
         return self.uinput.id['vendor']
@@ -54,9 +66,6 @@ class VX360Gamepad(VGamepad, api.VX360Gamepad):
 
         self.device.name = 'Microsoft X-Box 360 pad'
 
-        # Spoof input_id so SDL2 generates the known GUID (030000005e0400008e02000014010000)
-        # and uses SDL_GameControllerDB instead of heuristic button ordering.
-        # This fixes BTN_MODE messing up button indices.
         self.device.id = {
             'bustype': 0x0003,  # BUS_USB
             'vendor': 0x045E,   # Microsoft
@@ -94,7 +103,7 @@ class VX360Gamepad(VGamepad, api.VX360Gamepad):
         self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1))
         self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1))
 
-        self._create_uinput_device()
+        self.uinput = self._create_uinput_device()
         api.VX360Gamepad.__init__(self)
     
     def get_type(self):
@@ -120,14 +129,14 @@ class VX360Gamepad(VGamepad, api.VX360Gamepad):
         ]
         self.uinput.send_events(events)
     
-    def register_notification(self, callback):
+    def register_notification(self, callback_function):
         raise NotImplementedError
     
     def unregister_notification(self):
         raise NotImplementedError
 
 
-class VDS4Gamepad(VGamepad):
+class VDS4Gamepad(VGamepad, api.VDS4Gamepad):
     """
     Virtual DualShock 4 gamepad
     """
@@ -135,15 +144,8 @@ class VDS4Gamepad(VGamepad):
     def __init__(self, vid=None, pid=None):
         VGamepad.__init__(self, vid, pid)
 
-        # Spoof input_id so SDL2 recognizes DS4 via SDL_GameControllerDB
-        self.device.id = {
-            'bustype': 0x0003,  # BUS_USB
-            'vendor': 0x054C,   # Sony
-            'product': 0x09CC,  # DualShock 4 v2
-            'version': 0x0100,
-        }
-
-        self.dpad_direction = api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
+        self.gyro_calibration = ((0, 1105920, 17676), (0, 1105920, 17771), (0, 1105920, 17786))
+        self.accel_calibration = ((-297, 16384, 16209), (-42, 16384, 16148), (-512, 16384, 15988))
 
         self.dpad_mapping = {
             api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE: (0, 0),
@@ -174,216 +176,157 @@ class VDS4Gamepad(VGamepad):
 
         self.DS4_SPECIAL_BUTTON_TO_EV_KEY = {
             api.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_PS: libevdev.EV_KEY.BTN_MODE,
-            api.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD: libevdev.EV_KEY.BTN_TOUCH,
+            # api.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD: libevdev.EV_KEY.BTN_TOUCH,
         }
 
-        # Note: physical DS4 controllers create 3 evdev files on Linux:
+        # DS4 controllers create 3 evdev files on Linux:
         # 1: Sony Interactive Entertainment Wireless Controller
         # 2: Sony Interactive Entertainment Wireless Controller Motion Sensors
         # 3: Sony Interactive Entertainment Wireless Controller Touchpad
-        # TODO: emulate the motion sensors and touchpad on Linux
 
+        # Gamepad:
         self.device.name = 'Sony Interactive Entertainment Wireless Controller'  # 'PS4 Controller'
+        self.device.id = {
+            'bustype': 0x0003,  # BUS_USB
+            'vendor': 0x054C,   # Sony
+            'product': 0x09CC,  # DualShock 4 v2
+            'version': 0x8111, # FIXME: changed from 0x0100, double-check that this is correct (hid-playstation)
+        }
+        for key in (*self.DS4_BUTTON_TO_EV_KEY.values(), *self.DS4_SPECIAL_BUTTON_TO_EV_KEY.values()):
+            self.device.enable(key)  # buttons
+        for axis in (libevdev.EV_ABS.ABS_X, libevdev.EV_ABS.ABS_Y, libevdev.EV_ABS.ABS_RX, libevdev.EV_ABS.ABS_RY):
+            self.device.enable(axis, libevdev.InputAbsInfo(minimum=0, maximum=255))  # axes
+        for axis in (libevdev.EV_ABS.ABS_Z, libevdev.EV_ABS.ABS_RZ):
+            self.device.enable(axis, libevdev.InputAbsInfo(minimum=0, maximum=255))  # triggers
+        for axis in (libevdev.EV_ABS.ABS_HAT0X, libevdev.EV_ABS.ABS_HAT0Y):
+            self.device.enable(axis, libevdev.InputAbsInfo(minimum=-1, maximum=1))  # hat
+        self.uinput = self._create_uinput_device()
 
-        # Enable buttons
-        self.device.enable(libevdev.EV_KEY.BTN_SOUTH)
-        self.device.enable(libevdev.EV_KEY.BTN_EAST)
-        self.device.enable(libevdev.EV_KEY.BTN_NORTH)
-        self.device.enable(libevdev.EV_KEY.BTN_WEST)
-        self.device.enable(libevdev.EV_KEY.BTN_TL)
-        self.device.enable(libevdev.EV_KEY.BTN_TR)
-        self.device.enable(libevdev.EV_KEY.BTN_TL2)
-        self.device.enable(libevdev.EV_KEY.BTN_TR2)
-        self.device.enable(libevdev.EV_KEY.BTN_SELECT)
-        self.device.enable(libevdev.EV_KEY.BTN_START)
-        self.device.enable(libevdev.EV_KEY.BTN_MODE)
-        self.device.enable(libevdev.EV_KEY.BTN_THUMBL)
-        self.device.enable(libevdev.EV_KEY.BTN_THUMBR)
-        self.device.enable(libevdev.EV_KEY.BTN_TOUCH)
+        # Motion sensors
+        self.sensors_device = libevdev.Device()
+        self.sensors_device.name = 'Sony Interactive Entertainment Wireless Controller Motion Sensors'
+        self.sensors_device.id = self.device.id
+        self.sensors_device.enable(libevdev.INPUT_PROP_ACCELEROMETER)
+        self.sensors_device.enable(libevdev.EV_MSC.MSC_TIMESTAMP)
+        for axis in (libevdev.EV_ABS.ABS_X, libevdev.EV_ABS.ABS_Y, libevdev.EV_ABS.ABS_Z):
+            self.sensors_device.enable(axis, libevdev.InputAbsInfo(minimum=-4 * 8192, maximum=4 * 8192, fuzz=16, resolution=8192))
+        for axis in (libevdev.EV_ABS.ABS_RX, libevdev.EV_ABS.ABS_RY, libevdev.EV_ABS.ABS_RZ):
+            self.sensors_device.enable(axis, libevdev.InputAbsInfo(minimum=-2048 * 1024, maximum=2048 * 1024, fuzz=16, resolution=1024))
+        self.sensors_uinput = self._create_uinput_device(self.sensors_device)
 
-        # Enable axes
-        self.device.enable(libevdev.EV_ABS.ABS_X, libevdev.InputAbsInfo(minimum=0, maximum=255, value=128))
-        self.device.enable(libevdev.EV_ABS.ABS_Y, libevdev.InputAbsInfo(minimum=0, maximum=255, value=128))
-        self.device.enable(libevdev.EV_ABS.ABS_RX, libevdev.InputAbsInfo(minimum=0, maximum=255, value=128))
-        self.device.enable(libevdev.EV_ABS.ABS_RY, libevdev.InputAbsInfo(minimum=0, maximum=255, value=128))
-        self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1, value=0))
-        self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1, value=0))
+        # Touchpad
+        self.touchpad_device = libevdev.Device()
+        self.touchpad_device.name = 'Sony Interactive Entertainment Wireless Controller Touchpad'
+        self.touchpad_device.id = self.device.id
+        self.touchpad_device.enable(libevdev.INPUT_PROP_POINTER)
+        self.touchpad_device.enable(libevdev.INPUT_PROP_BUTTONPAD)
+        for key in (libevdev.EV_KEY.BTN_LEFT, libevdev.EV_KEY.BTN_TOUCH, libevdev.EV_KEY.BTN_TOOL_FINGER, libevdev.EV_KEY.BTN_TOOL_DOUBLETAP):
+            self.touchpad_device.enable(key)
+        self.touchpad_device.enable(libevdev.EV_ABS.ABS_MT_SLOT, libevdev.InputAbsInfo(minimum=0, maximum=1))
+        self.touchpad_device.enable(libevdev.EV_ABS.ABS_MT_TRACKING_ID, libevdev.InputAbsInfo(minimum=0, maximum=0xFFFF))
+        for mt_axis, axis, size in ((libevdev.EV_ABS.ABS_MT_POSITION_X, libevdev.EV_ABS.ABS_X, 1920), (libevdev.EV_ABS.ABS_MT_POSITION_Y, libevdev.EV_ABS.ABS_Y, 942)):
+            self.touchpad_device.enable(mt_axis, libevdev.InputAbsInfo(minimum=0, maximum=size - 1))
+            self.touchpad_device.enable(axis, libevdev.InputAbsInfo(minimum=0, maximum=size - 1))
+        self.touchpad_uinput = self._create_uinput_device(self.touchpad_device)
 
-        # Enable triggers
-        self.device.enable(libevdev.EV_ABS.ABS_Z, libevdev.InputAbsInfo(minimum=0, maximum=255))
-        self.device.enable(libevdev.EV_ABS.ABS_RZ, libevdev.InputAbsInfo(minimum=0, maximum=255))
+        self._sensor_timestamp_us = 0  # accumulated from wTimestamp
+        self._prev_sensor_timestamp = None
 
-        self.uinput = self.device.create_uinput_device()
+        # Initial motion sensor state of a ViGEmBus virtual DualShock 4 (gravity reading):
+        self._send_sensor_events(api.DS4_REPORT_EX.from_buffer_copy(_VIGEMBUS_DEFAULT_REPORT).Report)
 
-        self.report = self.get_default_report()
-        self.update()
+        api.VDS4Gamepad.__init__(self)
 
-    def get_default_report(self):
-        rep = api.DS4_REPORT(
-            bThumbLX=0,
-            bThumbLY=0,
-            bThumbRX=0,
-            bThumbRY=0,
-            wButtons=0,
-            bSpecial=0,
-            bTriggerL=0,
-            bTriggerR=0)
-        api.DS4_REPORT_INIT(rep)
-        return rep
-
-    def reset(self):
-        """
-        Resets the report to the default state
-        """
-        self.report = self.get_default_report()
-        self.dpad_direction = api.DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NONE
-
-    def press_button(self, button):
-        """
-        Presses a button (no effect if already pressed)
-        All possible buttons are in DS4_BUTTONS
-
-        :param: a DS4_BUTTONS field, e.g. DS4_BUTTONS.DS4_BUTTON_TRIANGLE
-        """
-        self.report.wButtons = self.report.wButtons | button
-
-    def release_button(self, button):
-        """
-        Releases a button (no effect if already released)
-        All possible buttons are in DS4_BUTTONS
-
-        :param: a DS4_BUTTONS field, e.g. DS4_BUTTONS.DS4_BUTTON_TRIANGLE
-        """
-        self.report.wButtons = self.report.wButtons & ~button
-
-    def press_special_button(self, special_button):
-        """
-        Presses a special button (no effect if already pressed)
-        All possible buttons are in DS4_SPECIAL_BUTTONS
-
-        :param: a DS4_SPECIAL_BUTTONS field, e.g. DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
-        """
-        self.report.bSpecial = self.report.bSpecial | special_button
-
-    def release_special_button(self, special_button):
-        """
-        Releases a special button (no effect if already released)
-        All possible buttons are in DS4_SPECIAL_BUTTONS
-
-        :param: a DS4_SPECIAL_BUTTONS field, e.g. DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
-        """
-        self.report.bSpecial = self.report.bSpecial & ~special_button
-
-    def left_trigger(self, value):
-        """
-        Sets the value of the left trigger
-
-        :param: integer between 0 and 255 (0 = trigger released)
-        """
-        self.report.bTriggerL = value
-
-    def right_trigger(self, value):
-        """
-        Sets the value of the right trigger
-
-        :param: integer between 0 and 255 (0 = trigger released)
-        """
-        self.report.bTriggerR = value
-
-    def left_trigger_float(self, value_float):
-        """
-        Sets the value of the left trigger
-
-        :param: float between 0.0 and 1.0 (0.0 = trigger released)
-        """
-        self.left_trigger(round(value_float * 255))
-
-    def right_trigger_float(self, value_float):
-        """
-        Sets the value of the right trigger
-
-        :param: float between 0.0 and 1.0 (0.0 = trigger released)
-        """
-        self.right_trigger(round(value_float * 255))
-
-    def left_joystick(self, x_value, y_value):
-        """
-        Sets the values of the X and Y axis for the left joystick
-
-        :param: integer between 0 and 255 (128 = neutral position)
-        """
-        self.report.bThumbLX = x_value
-        self.report.bThumbLY = y_value
-
-    def right_joystick(self, x_value, y_value):
-        """
-        Sets the values of the X and Y axis for the right joystick
-
-        :param: integer between 0 and 255 (128 = neutral position)
-        """
-        self.report.bThumbRX = x_value
-        self.report.bThumbRY = y_value
-
-    def left_joystick_float(self, x_value_float, y_value_float):
-        """
-        Sets the values of the X and Y axis for the left joystick
-
-        :param: float between -1.0 and 1.0 (0 = neutral position)
-        """
-        self.left_joystick(128 + round(x_value_float * 127),
-                           128 + round(y_value_float * 127))
-
-    def right_joystick_float(self, x_value_float, y_value_float):
-        """
-        Sets the values of the X and Y axis for the right joystick
-
-        :param: float between -1.0 and 1.0 (0 = neutral position)
-        """
-        self.right_joystick(128 + round(x_value_float * 127),
-                            128 + round(y_value_float * 127))
-
-    def directional_pad(self, direction):
-        """
-        Sets the direction of the directional pad (hat)
-        All possible directions are in DS4_DPAD_DIRECTIONS
-
-        :param: a DS4_DPAD_DIRECTIONS field, e.g. DS4_DPAD_DIRECTIONS.DS4_BUTTON_DPAD_NORTHWEST
-        """
-        api.DS4_SET_DPAD(self.report, direction)
-        self.dpad_direction = direction
-
-    def update(self):
-        """
-        Sends the current report (i.e. commands) to the virtual device
-        """
-        for btn, key in self.DS4_BUTTON_TO_EV_KEY.items():
-            self.uinput.send_events([
-                libevdev.InputEvent(key, value=(int(bool(self.report.wButtons & btn)))),
-            ])
-
-        for btn, key in self.DS4_SPECIAL_BUTTON_TO_EV_KEY.items():
-            self.uinput.send_events([
-                libevdev.InputEvent(key, value=(int(bool(self.report.bSpecial & btn)))),
-            ])
-
-        # Update axes
+    def get_type(self):
+        return api.VIGEM_TARGET_TYPE.DualShock4Wired
+    
+    def _send_gamepad_events(self, report):
+        hat_x, hat_y = self.dpad_mapping.get(report.wButtons & 0x0F, (0, 0))  # 8 to 15 = released
         self.uinput.send_events([
-            # Left joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=self.report.bThumbLX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=self.report.bThumbLY),
-            # Right joystick
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RX, value=self.report.bThumbRX),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=self.report.bThumbRY),
-            # Triggers
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_Z, value=self.report.bTriggerL),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ, value=self.report.bTriggerR)
+            *(libevdev.InputEvent(key, value=int(bool(report.wButtons & btn))) for btn, key in self.DS4_BUTTON_TO_EV_KEY.items()),
+            *(libevdev.InputEvent(key, value=int(bool(report.bSpecial & btn))) for btn, key in self.DS4_SPECIAL_BUTTON_TO_EV_KEY.items()),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=report.bThumbLX),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=report.bThumbLY),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RX, value=report.bThumbRX),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RY, value=report.bThumbRY),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_Z, value=report.bTriggerL),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_RZ, value=report.bTriggerR),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0X, value=hat_x),
+            libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat_y),
+            libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0),
         ])
 
-        hat0x_value, hat0y_value = self.dpad_mapping[self.dpad_direction]
+    def _send_sensor_events(self, report):
+        # calibrated gyro and accelerometer events:
+        events = [
+            libevdev.InputEvent(axis, value=int((raw - bias) * num / den)) for axis, raw, (bias, num, den) in zip(
+            (libevdev.EV_ABS.ABS_RX, libevdev.EV_ABS.ABS_RY, libevdev.EV_ABS.ABS_RZ, libevdev.EV_ABS.ABS_X, libevdev.EV_ABS.ABS_Y, libevdev.EV_ABS.ABS_Z),
+            (report.wGyroX, report.wGyroY, report.wGyroZ, report.wAccelX, report.wAccelY, report.wAccelZ), self.gyro_calibration + self.accel_calibration)
+        ]
+        # wTimestamp in units of 16/3 microseconds (wraps at 65536):
+        if self._prev_sensor_timestamp is not None:
+            delta = (report.wTimestamp - self._prev_sensor_timestamp) & 0xFFFF
+            self._sensor_timestamp_us = (self._sensor_timestamp_us + (delta * 16 + 1) // 3) & 0xFFFFFFFF
+        self._prev_sensor_timestamp = report.wTimestamp
+        timestamp_us = self._sensor_timestamp_us
+        events += [
+            libevdev.InputEvent(
+                libevdev.EV_MSC.MSC_TIMESTAMP,
+                value=timestamp_us - (1 << 32) if timestamp_us >= (1 << 31) else timestamp_us
+            ),
+            libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0),
+        ]
+        self.sensors_uinput.send_events(events)
 
-        self.uinput.send_events([
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0X, value=hat0x_value),
-            libevdev.InputEvent(libevdev.EV_ABS.ABS_HAT0Y, value=hat0y_value)
-        ])
+    def _send_touchpad_events(self, report, touches=()):
+        events = []
+        for touch in touches:
+            positions = []
+            for slot, (contact, data) in enumerate(
+                ((touch.bIsUpTrackingNum1, touch.bTouchData1), (touch.bIsUpTrackingNum2, touch.bTouchData2))
+            ):
+                events.append(libevdev.InputEvent(libevdev.EV_ABS.ABS_MT_SLOT, value=slot))
+                if contact & 0x80:  # finger not touching
+                    events.append(libevdev.InputEvent(libevdev.EV_ABS.ABS_MT_TRACKING_ID, value=-1))
+                else:
+                    x = data[0] | (data[1] & 0x0F) << 8
+                    y = data[1] >> 4 | data[2] << 4
+                    positions.append((x, y))
+                    events += [
+                        libevdev.InputEvent(libevdev.EV_ABS.ABS_MT_TRACKING_ID, value=contact & 0x7F),
+                        libevdev.InputEvent(libevdev.EV_ABS.ABS_MT_POSITION_X, value=x),
+                        libevdev.InputEvent(libevdev.EV_ABS.ABS_MT_POSITION_Y, value=y),
+                    ]
+            events += [
+                libevdev.InputEvent(libevdev.EV_KEY.BTN_TOUCH, value=int(len(positions) > 0)),
+                libevdev.InputEvent(libevdev.EV_KEY.BTN_TOOL_FINGER, value=int(len(positions) == 1)),
+                libevdev.InputEvent(libevdev.EV_KEY.BTN_TOOL_DOUBLETAP, value=int(len(positions) == 2)),
+            ]
+            if positions:
+                events += [
+                    libevdev.InputEvent(libevdev.EV_ABS.ABS_X, value=positions[0][0]),
+                    libevdev.InputEvent(libevdev.EV_ABS.ABS_Y, value=positions[0][1]),
+                ]
+        touchpad_click = report.bSpecial & api.DS4_SPECIAL_BUTTONS.DS4_SPECIAL_BUTTON_TOUCHPAD
+        events += [
+            libevdev.InputEvent(libevdev.EV_KEY.BTN_LEFT, value=int(bool(touchpad_click))),
+            libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0),
+        ]
+        self.touchpad_uinput.send_events(events)
 
-        self.uinput.send_events([libevdev.InputEvent(libevdev.EV_SYN.SYN_REPORT, value=0)])
+    def update_from_report(self, report):
+        self._send_gamepad_events(report)
+        self._send_touchpad_events(report)
+
+    def update_from_extended_report(self, extended_report):
+        report = extended_report.Report
+        self._send_gamepad_events(report)
+        self._send_sensor_events(report)
+        touches = (report.sCurrentTouch, *report.sPreviousTouch)[:min(report.bTouchPacketsN, 3)]
+        self._send_touchpad_events(report, touches)
+
+    def register_notification(self, callback_function):
+        raise NotImplementedError
+
+    def unregister_notification(self):
+        raise NotImplementedError
