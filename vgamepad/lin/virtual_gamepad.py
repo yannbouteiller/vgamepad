@@ -5,6 +5,7 @@ All API docstrings are defined in vgamepad.api
 """
 
 from abc import ABC
+import gc
 import libevdev
 import itertools
 
@@ -33,7 +34,16 @@ class VGamepad(ABC):
         self._pid = pid
         self._index = next(_INDEX_COUNTER)
         self.uinput = None
-    
+
+    def __del__(self):
+        self._release_devices()
+        if gc is not None:
+            gc.collect()
+
+    def _release_devices(self):
+        self.device = None
+        self.uinput = None
+
     def _create_uinput_device(self, device=None):
         """
         Overrides the device VID and PID and returns its uinput.
@@ -236,6 +246,13 @@ class VDS4Gamepad(VGamepad, api.VDS4Gamepad):
         self._send_sensor_events(api.DS4_REPORT_EX.from_buffer_copy(_VIGEMBUS_DEFAULT_REPORT).Report)
 
         api.VDS4Gamepad.__init__(self)
+
+    def _release_devices(self):
+        VGamepad._release_devices(self)
+        self.sensors_device = None
+        self.sensors_uinput = None
+        self.touchpad_device = None
+        self.touchpad_uinput = None
 
     def get_type(self):
         return api.VIGEM_TARGET_TYPE.DualShock4Wired

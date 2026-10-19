@@ -17,7 +17,7 @@ import pygame
 WAIT_S = 0.1
 SYSTEM = platform.system()
 
-DS4_NAME = "PS4 Controller"
+DS4_NAME = "PS4 Controller" if SYSTEM == "Windows" else "Sony Interactive Entertainment Wireless Controller"
 DS4_NB_BUTTONS = 16 if SYSTEM == "Windows" else 13
 DS4_NB_HATS = 0 if SYSTEM == "Windows" else 1
 
