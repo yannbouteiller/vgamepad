@@ -578,7 +578,7 @@ class VDS4Gamepad(VGamepad):
         """
         self.report = self.get_default_report()
         self.extended_report = self.get_default_extended_report()
-        self._use_extended_report = False
+        # self._use_extended_report = False
 
     def press_button(self, button):
         """
@@ -791,7 +791,7 @@ class VDS4Gamepad(VGamepad):
         else:
             self.update_from_report(self.report)
     
-    def update_extended_report(extended_report):
+    def update_extended_report(self, extended_report):
         """
         Deprecated alias for `VDS4Gamepad.update_from_extended_report` (backward compatibility with v0.1.X).
         """
