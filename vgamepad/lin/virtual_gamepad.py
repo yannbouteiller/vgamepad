@@ -8,8 +8,10 @@ from abc import ABC
 import gc
 import libevdev
 import itertools
+from inspect import signature
 
 import vgamepad.api as api
+from vgamepad.lin.force_feedback import ForceFeedback
 
 
 _INDEX_COUNTER = itertools.count(1)
@@ -25,15 +27,30 @@ _VIGEMBUS_DEFAULT_REPORT = bytes([
 ])
 
 
+class NotificationCallback:
+
+    def __init__(self, callback, light):
+        self._callback = callback
+        self._light = light
+
+    def __call__(self, strong, weak):
+        # Same arguments as the ViGEm callbacks: client, target, large motor, small motor, LED / lightbar, user data
+        self._callback(None, None, strong >> 8, weak >> 8, self._light, None)
+
+
 class VGamepad(ABC):
 
-    def __init__(self, vid=None, pid=None):
+    def __init__(self, vid=None, pid=None, notification_light=None):
         self.device = libevdev.Device()
         self.device.name = 'Virtual Gamepad'
         self._vid = vid
         self._pid = pid
         self._index = next(_INDEX_COUNTER)
         self.uinput = None
+        self._notifications_registered = False
+        self._ff = None
+        self._uinput_file = None
+        self._notification_light = notification_light
 
     def __del__(self):
         self._release_devices()
@@ -41,10 +58,16 @@ class VGamepad(ABC):
             gc.collect()
 
     def _release_devices(self):
+        if self._ff is not None:
+            self._ff.close()
+            self._ff = None
         self.device = None
         self.uinput = None
+        if self._uinput_file is not None:
+            self._uinput_file.close()
+            self._uinput_file = None
 
-    def _create_uinput_device(self, device=None):
+    def _create_uinput_device(self, device=None, uinput_fd=None):
         """
         Overrides the device VID and PID and returns its uinput.
         Must be called after self.device is fully configured.
@@ -54,7 +77,17 @@ class VGamepad(ABC):
             device.id = {'vendor': self._vid}
         if self._pid is not None:
             device.id = {'product': self._pid}
-        return device.create_uinput_device()
+        return device.create_uinput_device(uinput_fd)
+    
+    def _create_gamepad_uinput_device(self):
+        """
+        Creates the main uinput device, listening for notifications.
+        """
+        self.device.enable(libevdev.EV_FF.FF_RUMBLE)
+        self._uinput_file = open('/dev/uinput', 'r+b', buffering=0)
+        uinput = self._create_uinput_device(uinput_fd=self._uinput_file)
+        self._ff = ForceFeedback(self._uinput_file)
+        return uinput
 
     def get_vid(self):
         return self.uinput.id['vendor']
@@ -64,6 +97,9 @@ class VGamepad(ABC):
 
     def get_index(self):
         return self._index
+    
+    def unregister_notification(self):
+        self._ff.set_rumble_callback(None)
 
 
 class VX360Gamepad(VGamepad, api.VX360Gamepad):
@@ -72,7 +108,7 @@ class VX360Gamepad(VGamepad, api.VX360Gamepad):
     """
 
     def __init__(self, vid=None, pid=None):
-        VGamepad.__init__(self, vid, pid)
+        VGamepad.__init__(self, vid, pid, notification_light=0)
 
         self.device.name = 'Microsoft X-Box 360 pad'
 
@@ -113,7 +149,7 @@ class VX360Gamepad(VGamepad, api.VX360Gamepad):
         self.device.enable(libevdev.EV_ABS.ABS_HAT0X, libevdev.InputAbsInfo(minimum=-1, maximum=1))
         self.device.enable(libevdev.EV_ABS.ABS_HAT0Y, libevdev.InputAbsInfo(minimum=-1, maximum=1))
 
-        self.uinput = self._create_uinput_device()
+        self.uinput = self._create_gamepad_uinput_device()
         api.VX360Gamepad.__init__(self)
     
     def get_type(self):
@@ -140,10 +176,15 @@ class VX360Gamepad(VGamepad, api.VX360Gamepad):
         self.uinput.send_events(events)
     
     def register_notification(self, callback_function):
-        raise NotImplementedError
-    
-    def unregister_notification(self):
-        raise NotImplementedError
+        """
+        Note: the callback must not call methods of the gamepad.
+        """
+        if self._notifications_registered:
+            raise RuntimeError("Cannot register a callback more than once per gamepad.")
+        if not api.check_callback_signature(callback_function):
+            raise TypeError("Needed callback function signature: {}, but got: {}".format(signature(api.dummy_x360_callback), signature(callback_function)))
+        self._ff.set_rumble_callback(NotificationCallback(callback_function, self._notification_light))
+        self._notifications_registered = True
 
 
 class VDS4Gamepad(VGamepad, api.VDS4Gamepad):
@@ -152,7 +193,7 @@ class VDS4Gamepad(VGamepad, api.VDS4Gamepad):
     """
 
     def __init__(self, vid=None, pid=None):
-        VGamepad.__init__(self, vid, pid)
+        VGamepad.__init__(self, vid, pid, notification_light=api.DS4_LIGHTBAR_COLOR(0, 0, 0))
 
         self.gyro_calibration = ((0, 1105920, 17676), (0, 1105920, 17771), (0, 1105920, 17786))
         self.accel_calibration = ((-297, 16384, 16209), (-42, 16384, 16148), (-512, 16384, 15988))
@@ -210,7 +251,7 @@ class VDS4Gamepad(VGamepad, api.VDS4Gamepad):
             self.device.enable(axis, libevdev.InputAbsInfo(minimum=0, maximum=255))  # triggers
         for axis in (libevdev.EV_ABS.ABS_HAT0X, libevdev.EV_ABS.ABS_HAT0Y):
             self.device.enable(axis, libevdev.InputAbsInfo(minimum=-1, maximum=1))  # hat
-        self.uinput = self._create_uinput_device()
+        self.uinput = self._create_gamepad_uinput_device()
 
         # Motion sensors
         self.sensors_device = libevdev.Device()
@@ -343,7 +384,12 @@ class VDS4Gamepad(VGamepad, api.VDS4Gamepad):
         self._send_touchpad_events(report, touches)
 
     def register_notification(self, callback_function):
-        raise NotImplementedError
-
-    def unregister_notification(self):
-        raise NotImplementedError
+        """
+        Note: the callback must not call methods of the gamepad.
+        """
+        if self._notifications_registered:
+            raise RuntimeError("Cannot register a callback more than once per gamepad.")
+        if not api.check_callback_signature(callback_function):
+            raise TypeError("Needed callback function signature: {}, but got: {}".format(signature(api.dummy_ds4_callback), signature(callback_function)))
+        self._ff.set_rumble_callback(NotificationCallback(callback_function, self._notification_light))
+        self._notifications_registered = True
