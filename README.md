@@ -6,7 +6,7 @@ Virtual XBox360 and DualShock4 gamepads in python.
 Virtual Gamepad (```vgamepad```) is a small python library that emulates XBox360 and DualShock4 gamepads on your system.
 It enables controlling e.g. a video-game that requires analog input, directly from your python script.
 
-On Windows ```vgamepad``` uses the [Virtual Gamepad Emulation](https://github.com/nefarius/ViGEmBus) C++ framework, for which it essentially provides python bindings and a user-friendly interface.
+On Windows, ```vgamepad``` uses the [Virtual Gamepad Emulation](https://github.com/nefarius/ViGEmBus) C++ framework, for which it essentially provides python bindings and a user-friendly interface.
 The ViGEmBus driver (`v1.17.333`) is bundled with the library and installs automatically.
 
 On Linux, `vgamepad` creates a `uinput` device and requires the corresponding permission.
@@ -33,7 +33,7 @@ pip install vgamepad
 ```
 
 This automatically runs the installer of the ViGEmBus driver.
-Accept the licence agreement, click ```Install```, allow the installer to modify you PC, wait for completion and click ```Finish```.
+Accept the licence agreement, click ```Install```, allow the installer to modify your PC, wait for completion and click ```Finish```.
 
 ```vgamepad``` is now installed in your active python environment.
 
