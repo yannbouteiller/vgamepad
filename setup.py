@@ -25,7 +25,7 @@ assert platform.system() in ('Windows', 'Linux'), "vgamepad is only supported on
 
 
 VIGEMBUS_VERSION = "1.17.333.0"
-VGAMEPAD_VERSION = "0.1.4"
+VGAMEPAD_VERSION = "0.2.0"
 
 
 archstr = platform.machine()
@@ -53,7 +53,7 @@ if is_windows:
         registry_str = subprocess.check_output(
             ['reg', 'query', r'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', '/s'], text=True).lower()
         j = registry_str.find('nefarius virtual gamepad emulation bus driver')
-        if j > 0:
+        if j >= 0:
             vigem_installed = True
             i = registry_str[:j].rfind('displayversion')
             if i != -1:

@@ -7,15 +7,11 @@ Virtual Gamepad (```vgamepad```) is a small python library that emulates XBox360
 It enables controlling e.g. a video-game that requires analog input, directly from your python script.
 
 On Windows ```vgamepad``` uses the [Virtual Gamepad Emulation](https://github.com/nefarius/ViGEmBus) C++ framework, for which it essentially provides python bindings and a user-friendly interface.
+The ViGEmBus driver (`v1.17.333`) is bundled with the library and installs automatically.
+
+On Linux, `vgamepad` creates a `uinput` device and requires the corresponding permission.
 
 ---
-
-__Development status:__
-
-|  Windows  |                          Linux                          |
-|:---------:|:-------------------------------------------------------:|
-| *Stable.* | *Experimental,*<br/>see [Linux notes](readme/linux.md). |
-
 
 ## Quick links
 - [Installation](#installation)
@@ -43,13 +39,39 @@ Accept the licence agreement, click ```Install```, allow the installer to modify
 
 ### Linux:
 
-Please read the [Linux section](readme/linux.md).
+#### Prerequisite
+
+On Linux, `vgamepad` needs access to `uinput`.
+
+To give yourself permission to access `uinput` for the current session, open a terminal and execute:
+```bash
+sudo chmod +0666 /dev/uinput
+```
+
+Create a `udev` rule to set the permission permanently (otherwise the permission will be removed next time you log in):
+```bash
+sudo nano /etc/udev/rules.d/50-uinput.rules 
+```
+In `nano`, paste the following line:
+```bash
+KERNEL=="uinput", TAG+="uaccess"
+```
+Save by pressing `CTRL+o`, `ENTER`, and exit `nano` by pressing `CTRL+x`
+
+#### vgamepad installation
+
+Run:
+```bash
+pip install vgamepad
+```
+
+```vgamepad``` is now installed in your active python environment.
 
 ---
 
 ## Getting started
 
-```vgamepad``` provides two main python classes: ```VX360Gamepad```, which emulates a XBox360 gamepad, and ```VDS4Gamepad```, which emulates a DualShock4 gamepad.
+```vgamepad``` exposes two main python classes : ```VX360Gamepad```, which emulates an XBox360 gamepad, and ```VDS4Gamepad```, which emulates a DualShock4 gamepad. These emulated gamepad are detected by your computer as if a true gamepad was connected, and can be controlled from your python program.
 
 The state of a virtual gamepad (e.g. pressed buttons, joystick values...) is called a report.
 To modify the report, a number of user-friendly API functions are provided by ```vgamepad```.
@@ -65,7 +87,7 @@ import vgamepad as vg
 gamepad = vg.VX360Gamepad()
 ```
 
-As soon as the ```VX360Gamepad``` object is created, the virtual gamepad is connected to your system via the ViGEmBus driver, and will remain connected until the object is destroyed.
+As soon as the ```VX360Gamepad``` object is created, the virtual gamepad is connected to your system and will remain connected until the object is destroyed.
 
 Buttons can be pressed and released through ```press_button``` and ```release_button```:
 
@@ -185,7 +207,7 @@ time.sleep(1.0)
 
 ### DualShock4 gamepad
 
-Using a virtual DS4 gamepad is similar to X360:
+Using a virtual DS4 gamepad is similar to X360, except `vgamepad` also exposes features that are exclusive to the DS4 gamepad:
 ```python
 import vgamepad as vg
 
@@ -241,7 +263,7 @@ class DS4_SPECIAL_BUTTONS(IntFlag):
     DualShock 4 special buttons
     """
     DS4_SPECIAL_BUTTON_PS = 1 << 0
-    DS4_SPECIAL_BUTTON_TOUCHPAD = 1 << 1  # Windows only, no effect on Linux
+    DS4_SPECIAL_BUTTON_TOUCHPAD = 1 << 1
 ```
 
 Triggers and joysticks (integer values):
@@ -289,6 +311,22 @@ class DS4_DPAD_DIRECTIONS(IntEnum):
     DS4_BUTTON_DPAD_NORTH = 0x0
 ```
 
+Accelerometer and gyroscope:
+```python
+gamepad.accelerometer(x_value=3000, y_value=1000, z_value=0)  # values between -32768 and 32767
+gamepad.gyroscope(x_value=0, y_value=10000, z_value=-5000)  # values between -32768 and 32767
+
+gamepad.update()
+```
+
+Touchpad:
+```python
+gamepad.touchpad(finger1=(1800, 800), finger2=None) # x between 0 and 1919, y between 0 and 941
+# (0,0) is top left and (1919, 941) is bottom right
+
+gamepad.update()
+```
+
 Reset to default state:
 ```python
 gamepad.reset()
@@ -321,6 +359,9 @@ gamepad.left_trigger_float(value_float=0.5)
 gamepad.right_trigger_float(value_float=0.5)
 gamepad.left_joystick_float(x_value_float=0.0, y_value_float=0.2)
 gamepad.right_joystick_float(x_value_float=-1.0, y_value_float=1.0)
+gamepad.accelerometer(x_value=3000, y_value=1000, z_value=0)
+gamepad.gyroscope(x_value=0, y_value=10000, z_value=-5000)
+gamepad.touchpad(finger1=(1800, 800), finger2=None)
 
 gamepad.update()
 
@@ -330,6 +371,9 @@ time.sleep(1.0)
 gamepad.release_button(button=vg.DS4_BUTTONS.DS4_BUTTON_TRIANGLE)
 gamepad.right_trigger_float(value_float=0.0)
 gamepad.right_joystick_float(x_value_float=0.0, y_value_float=0.0)
+gamepad.accelerometer(x_value=0, y_value=0, z_value=0)
+gamepad.gyroscope(x_value=0, y_value=0, z_value=0)
+gamepad.touchpad(finger1=None, finger2=None)
 
 gamepad.update()
 
@@ -347,13 +391,11 @@ time.sleep(1.0)
 
 ### Rumble and LEDs:
 
-_**Note**: Rumble and LEDs are supported on Windows only (not yet ported to Linux)._
-
 `vgamepad` enables registering custom callback functions to handle updates of the rumble motors, and of the LED ring.
 
 Custom callback functions require 6 parameters:
 ```python
-def my_callback(client, target, large_motor, small_motor, led_number, user_data):
+def my_callback(client, target, large_motor, small_motor, led, user_data):
     """
     Callback function triggered at each received state change
 
@@ -361,13 +403,13 @@ def my_callback(client, target, large_motor, small_motor, led_number, user_data)
     :param target: vigem device ID
     :param large_motor: integer in [0, 255] representing the state of the large motor
     :param small_motor: integer in [0, 255] representing the state of the small motor
-    :param led_number: integer in [0, 255] representing the state of the LED ring
+    :param led: integer in [0, 255] (X360) or tuple (R,G,B) (DS4)
     :param user_data: placeholder, do not use
     """
     # Do your things here. For instance:
     print(f"Received notification for client {client}, target {target}")
     print(f"large motor: {large_motor}, small motor: {small_motor}")
-    print(f"led number: {led_number}")
+    print(f"led: {led}")
 ```
 
 The callback function needs to be registered as follows:
@@ -395,12 +437,19 @@ gamepad.unregister_notification()
 ---
 
 ### Advanced users:
-More API functions are available for advanced users, and it is possible to modify the report directly instead of using the API.
-See [virtual_gamepad.py](https://github.com/yannbouteiller/vgamepad/blob/main/vgamepad/win/virtual_gamepad.py). 
+More API functions are available for advanced users.
+See [api.py](https://github.com/yannbouteiller/vgamepad/blob/main/vgamepad/api.py). 
 
 To skip installation of the `ViGEmBus` driver during `vgamepad` installation on Windows, set the `VGAMEPAD_SKIP_VIGEMBUS_INSTALL` environment variable to `true` before installing `vgamepad`.
 
-_Note: only `ViGEmBus 1.17.333.0` is tested._
+_Note: only `ViGEmBus 1.17.333.0` is tested on Windows._
+
+---
+
+## Testing:
+For X360 and DS4 basic function: https://hardwaretester.com/gamepad
+
+For DS4 advanced function: https://dualshock-tools.github.io (Windows only)
 
 ---
 
@@ -416,3 +465,4 @@ Please submit a PR with your name and a short description of your contribution i
 
 - JumpyzZ (rumble and LEDs)
 - willRicard (Linux support)
+- Palamabron (Linux support, advanced DS4 support)
